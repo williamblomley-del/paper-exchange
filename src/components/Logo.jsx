@@ -2,19 +2,28 @@ import { useState, useEffect } from "react";
 import { C } from "../theme.js";
 import { usePrices } from "../lib/pricesContext.js";
 
+// Manual logo overrides for tickers where the free logo services return the WRONG
+// image (e.g. FMP serves a valid-but-wrong logo for RR.L). Clearbit fetches the
+// real logo by company domain. Add more here as they come up.
+const LOGO_OVERRIDE = {
+  "RR.L": "https://logo.clearbit.com/rolls-royce.com",
+};
+
 // Real company logo (from the Edge Function's live `logo` URL) with a graceful
 // fallback to a coloured letter tile when there's no logo or the image fails.
 export default function Logo({ ticker, size = 30, round = false, src = null }) {
   const { detailOf } = usePrices();
-  // Candidate cascade (advance to the next on each load error, tile if all fail):
-  //   owner src → live Finnhub logo → FMP by FULL ticker (e.g. SMGB.L.png) →
-  //   FMP by base symbol (US only) → coloured tile.
-  // NOTE: for a SUFFIXED ticker (RR.L) we do NOT fall back to the base symbol —
-  // "RR" is a different company (Richtech), so that would show the WRONG logo.
+  const override = ticker ? LOGO_OVERRIDE[ticker] : null;
+  // For an overridden ticker, ONLY try the override → tile (never FMP, which is
+  // wrong for it). Otherwise the normal cascade:
+  //   owner src → live Finnhub logo → FMP by FULL ticker → FMP base (US only) → tile.
+  // A SUFFIXED ticker (RR.L) never falls back to the base symbol ("RR" = Richtech).
   const hasSuffix = ticker ? ticker.includes(".") : false;
   const base = ticker ? ticker.split(".")[0] : null;
   const FMP = (s) => `https://financialmodelingprep.com/image-stock/${s}.png`;
-  const candidates = [src, detailOf(ticker)?.logo, ticker && FMP(ticker), !hasSuffix && base && FMP(base)]
+  const candidates = (override
+    ? [override]
+    : [src, detailOf(ticker)?.logo, ticker && FMP(ticker), !hasSuffix && base && FMP(base)])
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i); // dedupe (US tickers: full === base)
   const [idx, setIdx] = useState(0);

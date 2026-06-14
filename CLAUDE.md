@@ -877,6 +877,16 @@ deposits via a **scheduled server job** (pg_cron).
   "tesla"→Tesla all work — search was never broken, just single-letter was noisy.
 - **RR.L logo override** (Clearbit rolls-royce.com) confirmed working in holdings list.
 
+### Milestone 5 — session 6: persistence + open items (build ✓)
+- **Tab + timeframe persist** across refresh (localStorage `pe_tab`/`pe_tf`); `enterGame` no longer
+  forces the Market tab. **Default timeframe is now 1D** (was 1Y); last choice persists.
+- **RR.L logo** fixed via its RYCEY ADR (Clearbit was blocked/0-bytes).
+
+⏳ OPEN (next session — owner ran low on usage):
+- **Photo upload** for avatars (needs a Supabase Storage bucket; avatar still initial+colour tile).
+- **Leaderboard polish** + **click a rival's holding to open that stock** (Leaderboard holdings list
+  is currently read-only; pass setActive/setTab in and make rows open StockDetail in Market).
+
 🎯 OWNER'S DREAM DESIGN (future direction — build for friends, maybe public later):
 - **Landing page**: two options — **Join a game** or **Create a game**; **Sign in** button top-right.
 - **Join**: enter username + password (or create username + password) → land in the portfolio

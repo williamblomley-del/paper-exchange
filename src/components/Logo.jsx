@@ -6,7 +6,8 @@ import { usePrices } from "../lib/pricesContext.js";
 // image (e.g. FMP serves a valid-but-wrong logo for RR.L). Clearbit fetches the
 // real logo by company domain. Add more here as they come up.
 const LOGO_OVERRIDE = {
-  "RR.L": "https://logo.clearbit.com/rolls-royce.com",
+  // RR.L (London) has no logo on FMP, but its US ADR "RYCEY" does — use that.
+  "RR.L": "https://financialmodelingprep.com/image-stock/RYCEY.png",
 };
 
 // Real company logo (from the Edge Function's live `logo` URL) with a graceful

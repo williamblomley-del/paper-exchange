@@ -86,7 +86,10 @@ export default function AllocationDonut({ items, centerLabel }) {
         const labelX = s.right ? cx + R + 50 : cx - R - 50;
         const kneeX = s.right ? cx + R + 16 : cx - R - 16;
         return (
-          <g key={"l" + i}>
+          <g key={"l" + i}
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+            transform={hover === i ? `translate(${s.mx * 9} ${s.my * 9})` : undefined}
+            style={{ transition: "transform .13s ease", cursor: "pointer" }}>
             <polyline points={`${s.ax},${s.ay} ${kneeX},${s.ly} ${s.right ? labelX - 6 : labelX + 6},${s.ly}`} fill="none" stroke={C.muted} strokeWidth="1" />
             <text x={labelX} y={s.ly - 2} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 12.5, fontWeight: 700, fill: C.ink }}>{trunc(s.label)}</text>
             <text x={labelX} y={s.ly + 13} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 11.5, fontWeight: 500, fill: C.dim }}>{(s.frac * 100).toFixed(1)}%</text>

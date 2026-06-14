@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /tmp/pe-scaffold && echo \"=== files ===\" && ls -la && echo \"=== package.json ===\" && cat package.json && echo \"=== vite.config.js ===\" && cat vite.config.js && echo \"=== .gitignore ===\" && cat .gitignore && echo \"=== index.html ===\" && cat index.html)",
+      "Bash(sleep 2; cat /tmp/pe-dev.log)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s http://localhost:5173/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/src/main.jsx)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s \"https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=5d&interval=60m\" -H \"User-Agent: Mozilla/5.0\" --max-time 25)",
+      "Bash(gh auth *)",
+      "Bash(git config *)"
+    ]
+  }
+}

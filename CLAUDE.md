@@ -846,6 +846,26 @@ deposits via a **scheduled server job** (pg_cron).
   later: widen `snap_read` to game-scoped + fetch their snapshots.)
 - Real market lists confirmed working after the owner redeployed the `quote` function.
 
+### Milestone 5 — session 4: polish batch (build ✓)
+- **Footer removed**: dropped the "Live prices via Finnhub · …" caption line in App.jsx.
+- **Pie "Other" only for <4% ✅** (`AllocationDonut.jsx`): replaced the top-7 cap with — keep every
+  slice ≥4%, roll only the <4% ones into "Other" (a lone small slice keeps its own name).
+- **Rolls-Royce logo fix (SERVER) ✅**: the Edge Function was borrowing the BASE symbol's logo for
+  suffixed tickers (`RR.L` → `RR` = Richtech, wrong company). Removed that base-symbol logo
+  fallback in `index.ts`; frontend already tries FMP by full ticker, else tile. ⚠️ **REDEPLOY.**
+- **Richer About ✅ (needs redeploy)**: Edge Function now also returns `weburl`, `ipo`,
+  `shareOutstanding`, `week52High`, `week52Low` (all free tier); StockDetail About shows IPO date,
+  shares out, 52-wk high/low, and a clickable website link, for ANY company. ⚠️ **REDEPLOY.**
+- **Live auto-refresh ✅**: App re-pulls prices every 60s while in the app (watchlist + held full +
+  active) so value/day-change/charts tick without a manual refresh. Watchlist is server-cached so
+  it stays under Finnhub's 60/min.
+- **Real per-player leaderboard performance ✅ (needs SQL)**: `loadBoardRows` now returns each
+  player's `deposited`; Leaderboard fetches the selected player's snapshots (`loadSnapshots`) and
+  renders a real `buildPerf` points chart (all-time). Needs `snap_read` widened to game-scoped:
+  `using (membership_id in (select game_member_ids()))` — see `supabase/leaderboard_history.sql`.
+  ⚠️ **OWNER MUST RUN that SQL** (else rivals' charts are just the invested→now baseline).
+- ⏳ **Photo upload still DEFERRED** (needs a Storage bucket; avatar stays initial+colour tile).
+
 🎯 OWNER'S DREAM DESIGN (future direction — build for friends, maybe public later):
 - **Landing page**: two options — **Join a game** or **Create a game**; **Sign in** button top-right.
 - **Join**: enter username + password (or create username + password) → land in the portfolio

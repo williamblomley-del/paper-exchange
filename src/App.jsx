@@ -169,6 +169,21 @@ export default function App() {
     fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
   }, [active, tf, phase]);
 
+  // Live auto-refresh: re-pull prices every 60s so value/day-change/charts tick
+  // with the market without a manual refresh. (Watchlist is server-cached so this
+  // stays well under Finnhub's free 60/min limit.)
+  useEffect(() => {
+    if (phase !== "app") return;
+    const id = setInterval(() => {
+      const tickers = Array.from(new Set([...WATCH, ...Object.keys(positions)]));
+      fetchPrices(tickers).then((map) => setLive((prev) => ({ ...prev, ...map }))).catch(() => {});
+      Object.keys(positions).forEach((t) => fetchQuote(t, "1D").then((d) => setLive((prev) => ({ ...prev, [t]: { ...prev[t], ...d } }))).catch(() => {}));
+      if (active) fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
+    }, 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, positions, active, tf]);
+
   // Real market lists (gainers/losers/most active) once in the app.
   useEffect(() => {
     if (phase !== "app") return;
@@ -219,7 +234,7 @@ export default function App() {
       const inv = Number(r.deposited) || 1;
       return {
         id: r.id, username: r.username, value: v, ret: ((v - inv) / inv) * 100,
-        cash: Number(r.cash),
+        cash: Number(r.cash), deposited: inv,
         holdings: (r.positions || []).map((x) => ({ ticker: x.ticker, shares: Number(x.shares), avgCost: Number(x.avg_cost) })),
       };
     }).sort((a, b) => b.value - a.value);
@@ -534,9 +549,6 @@ export default function App() {
         )}
       </div>
 
-      <div style={{ textAlign: "center", padding: "0 0 40px", fontSize: 11.5, color: C.muted, fontFamily: C.mono }}>
-        Live prices via Finnhub · price charts illustrative · data saved to your account
-      </div>
     </div>
     </PricesCtx.Provider>
   );

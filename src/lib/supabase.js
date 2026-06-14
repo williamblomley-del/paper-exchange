@@ -92,6 +92,12 @@ export async function loadGameData(membershipId) {
   return { positions: pos || [], trades: tr || [], snapshots: snaps || [] };
 }
 
+export async function loadSnapshots(membershipId) {
+  if (!membershipId) return [];
+  const { data } = await supabase.from("portfolio_snapshots").select("day, value").eq("membership_id", membershipId).order("day", { ascending: true });
+  return data || [];
+}
+
 export async function recordSnapshot(membershipId, value) {
   if (!membershipId || value == null || isNaN(value)) return;
   const day = new Date().toISOString().slice(0, 10);

@@ -8,7 +8,6 @@ import { C } from "../theme.js";
 //  - Labels are de-overlapped per side (pushed apart to a min vertical gap), so
 //    they never sit on top of each other.
 const SHADES = ["#13243B", "#1F4068", "#2E6FB0", "#46A0FF", "#73B2EA", "#A6CBEB", "#CBDCEE", "#E4EDF6"];
-const MAX = 7; // max individual slices before the rest become "Other"
 
 function seg(cx, cy, R, r, a0, a1) {
   const large = a1 - a0 > Math.PI ? 1 : 0;
@@ -37,15 +36,17 @@ export default function AllocationDonut({ items, centerLabel }) {
   const W = 520, H = 300, cx = 260, cy = 150, R = 102, r = 62;
   const [hover, setHover] = useState(null); // index of the hovered slice (pops out)
 
-  // sort + cap into "Other"
-  let data = [...items].sort((a, b) => b.value - a.value);
-  if (data.length > MAX) {
-    const head = data.slice(0, MAX - 1);
-    const tail = data.slice(MAX - 1);
-    head.push({ label: "Other", value: tail.reduce((s, x) => s + x.value, 0) });
-    data = head;
-  }
-  const total = data.reduce((s, i) => s + i.value, 0) || 1;
+  // sort, then roll only the SMALL slices (< 4% of the total) into "Other" so the
+  // chart stays readable without an oversized "Other" wedge. A lone small slice
+  // keeps its own name (no point calling a single 3% holding "Other").
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+  const total = sorted.reduce((s, i) => s + i.value, 0) || 1;
+  const big = sorted.filter((d) => d.value / total >= 0.04);
+  const small = sorted.filter((d) => d.value / total < 0.04);
+  let data = big;
+  if (small.length === 1) data = [...big, small[0]];
+  else if (small.length > 1) data = [...big, { label: "Other", value: small.reduce((s, x) => s + x.value, 0) }];
+  if (data.length === 0) data = sorted; // everything was tiny — show as-is
 
   // build slices with geometry
   let a = -Math.PI / 2;

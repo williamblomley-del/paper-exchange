@@ -215,7 +215,17 @@ export default function StockDetail({
       {(() => {
         const industry = m.industry || stock.industry;
         const country = m.country || stock.country;
-        const fields = [["CEO", m.ceo], ["Headquarters", m.hq], ["Employees", m.employees], ["Sector", m.sector], ["Industry", industry], ["Country", country], ["Exchange", stock.exchange]];
+        // shareOutstanding is in millions → show as B/M
+        const shares = stock.shareOutstanding != null ? (stock.shareOutstanding >= 1000 ? (stock.shareOutstanding / 1000).toFixed(2) + "B" : Math.round(stock.shareOutstanding) + "M") : null;
+        const web = stock.weburl ? <a href={stock.weburl} target="_blank" rel="noreferrer" style={{ color: C.blue, fontWeight: 500, textDecoration: "none" }}>{stock.weburl.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a> : null;
+        const fields = [
+          ["CEO", m.ceo], ["Headquarters", m.hq], ["Employees", m.employees], ["Sector", m.sector],
+          ["Industry", industry], ["Country", country], ["Exchange", stock.exchange],
+          ["IPO date", stock.ipo], ["Shares out", shares],
+          ["52-wk high", stock.week52High != null ? money(stock.week52High, cur) : null],
+          ["52-wk low", stock.week52Low != null ? money(stock.week52Low, cur) : null],
+          ["Website", web],
+        ];
         if (!m.desc && !fields.some(([, v]) => v)) return null;
         const desc = m.desc || `${stock.name} is listed on ${stock.exchange || "the market"}${industry ? `, in the ${industry} industry` : ""}.`;
         return (

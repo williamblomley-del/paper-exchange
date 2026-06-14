@@ -1,15 +1,28 @@
+import { useState, useEffect } from "react";
 import { C } from "../theme.js";
 import { P, pct, money } from "../lib/format.js";
 import { usePrices } from "../lib/pricesContext.js";
+import { loadSnapshots } from "../lib/supabase.js";
+import { buildPerf } from "../lib/perf.js";
 import Panel from "../components/Panel.jsx";
 import Stat from "../components/Stat.jsx";
 import Avatar from "../components/Avatar.jsx";
 import Logo from "../components/Logo.jsx";
+import BigChart from "../components/BigChart.jsx";
 
 // LEADERBOARD — real players in your game, ranked by total value.
 // board: [{ id, username, value, ret }] (from App). meId = my user id.
 export default function Leaderboard({ board = [], meId, game, selUser, setSelUser }) {
   const { priceOf, curOf, detailOf } = usePrices();
+  const [snaps, setSnaps] = useState([]);
+  // Load the selected player's real value history (needs game-scoped snap_read RLS).
+  const selId = (board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0])?.id;
+  useEffect(() => {
+    if (!selId) { setSnaps([]); return; }
+    let alive = true;
+    loadSnapshots(selId).then((s) => { if (alive) setSnaps(s); }).catch(() => { if (alive) setSnaps([]); });
+    return () => { alive = false; };
+  }, [selId]);
   if (!game) {
     return <Panel pad={40}><div style={{ textAlign: "center", color: C.dim, fontSize: 14 }}>You're not in a game yet.</div></Panel>;
   }
@@ -70,6 +83,17 @@ export default function Leaderboard({ board = [], meId, game, selUser, setSelUse
             <Stat label="Portfolio Value" value={P(sel.value)} />
             <Stat label="All-Time Return" value={pct(sel.ret)} color={sel.ret >= 0 ? C.green : C.red} />
           </div>
+          {/* real performance from this player's stored snapshots */}
+          {(() => {
+            const perf = buildPerf(snaps, sel.value, 0, sel.deposited || sel.value, "MAX");
+            return (
+              <>
+                <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "4px 0 8px" }}>Performance (all time)</div>
+                <BigChart points={perf.points} resolution="1d" blue height={120} />
+              </>
+            );
+          })()}
+
           {/* this player's holdings (read-only) */}
           <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "20px 0 6px" }}>Holdings</div>
           {(() => {

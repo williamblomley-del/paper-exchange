@@ -155,20 +155,22 @@ serve(async (req) => {
       snap = { price: y.price, change, changePct: y.prevClose ? (change / y.prevClose) * 100 : 0, open: y.open ?? y.prevClose, high: y.high, low: y.low, prevClose: y.prevClose, currency: y.currency, _yname: y.name, _yexch: y.exchange };
     }
 
-    // logo fallback: a suffixed ticker (AZN.L) borrows its base symbol's logo (AZN)
-    let logo = p.logo || null;
-    if (!logo && sym.includes(".")) {
-      const pb = await fh(`stock/profile2?symbol=${sym.split(".")[0]}`);
-      logo = pb?.logo || null;
-    }
+    // Logo: ONLY the exact listing's logo. We do NOT fall back to the base symbol
+    // for a suffixed ticker — "RR" is Richtech but "RR.L" is Rolls-Royce, so the
+    // base would be the WRONG company. (The frontend tries FMP by full ticker.)
+    const logo = p.logo || null;
     const yres = wantHistory ? await yahoo(ySym, range) : null;
+    const met = m?.metric || {};
 
     const out: Record<string, unknown> = {
       ...snap,
       name: p.name || snap._yname || sym,
       logo, marketCap: p.marketCapitalization ?? null,
       exchange: yres?.exchange || snap._yexch || normExchange(p.exchange) || null,
-      industry: p.finnhubIndustry || null, country: p.country || null, pe: m?.metric?.peTTM ?? null,
+      industry: p.finnhubIndustry || null, country: p.country || null, pe: met.peTTM ?? null,
+      // extra profile/metric fields for a richer About section (all free tier)
+      weburl: p.weburl || null, ipo: p.ipo || null, shareOutstanding: p.shareOutstanding ?? null,
+      week52High: met["52WeekHigh"] ?? null, week52Low: met["52WeekLow"] ?? null,
       history: yres?.history ?? [],
     };
     delete out._yname; delete out._yexch;

@@ -7,11 +7,14 @@ import { usePrices } from "../lib/pricesContext.js";
 export default function Logo({ ticker, size = 30, round = false, src = null }) {
   const { detailOf } = usePrices();
   // Candidate cascade (advance to the next on each load error, tile if all fail):
-  //   owner src → live Finnhub logo → FMP by FULL ticker (e.g. SMGB.L.png, which
-  //   FMP stores under the suffixed symbol) → FMP by base symbol → coloured tile.
+  //   owner src → live Finnhub logo → FMP by FULL ticker (e.g. SMGB.L.png) →
+  //   FMP by base symbol (US only) → coloured tile.
+  // NOTE: for a SUFFIXED ticker (RR.L) we do NOT fall back to the base symbol —
+  // "RR" is a different company (Richtech), so that would show the WRONG logo.
+  const hasSuffix = ticker ? ticker.includes(".") : false;
   const base = ticker ? ticker.split(".")[0] : null;
   const FMP = (s) => `https://financialmodelingprep.com/image-stock/${s}.png`;
-  const candidates = [src, detailOf(ticker)?.logo, ticker && FMP(ticker), base && FMP(base)]
+  const candidates = [src, detailOf(ticker)?.logo, ticker && FMP(ticker), !hasSuffix && base && FMP(base)]
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i); // dedupe (US tickers: full === base)
   const [idx, setIdx] = useState(0);

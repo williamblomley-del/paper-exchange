@@ -9,7 +9,9 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(curl -s \"https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=5d&interval=60m\" -H \"User-Agent: Mozilla/5.0\" --max-time 25)",
       "Bash(gh auth *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
     ]
   }
 }

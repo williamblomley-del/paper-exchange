@@ -132,7 +132,7 @@ export default function Portfolio({
 
         {/* RIGHT (wide) — own scroll */}
         <div className="colscroll" style={{ overflowY: "auto", minHeight: 0 }}>
-          {selected && MOCK_STOCKS[active] ? (
+          {selected ? (
             <StockDetail
               active={active} stock={detailOf(active)} tf={tf} setTf={setTf} positions={positions}
               tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt}

@@ -54,14 +54,14 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState("");
 
   // ui state
-  const [tab, setTab] = useState("market");
+  const [tab, setTab] = useState(() => localStorage.getItem("pe_tab") || "market"); // survive refresh
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
   const [searchModal, setSearchModal] = useState(false);
   const [recents, setRecents] = useState(() => { try { return JSON.parse(localStorage.getItem("pe_recents") || "[]"); } catch { return []; } });
   const searchTimer = useRef();
   const [active, setActive] = useState("NVDA");
-  const [tf, setTf] = useState("1Y");
+  const [tf, setTf] = useState(() => localStorage.getItem("pe_tf") || "1D"); // default Day; last choice persists
   const [tradeMode, setTradeMode] = useState("cash");
   const [tradeAmt, setTradeAmt] = useState("");
   const [msg, setMsg] = useState(null);
@@ -102,7 +102,6 @@ export default function App() {
     setPhase("loading");
     setCash(Number(m.cash));
     setInvested(Number(m.deposited));
-    setTab("market");
     const { positions: pos, trades: tr, snapshots } = await loadGameData(m.id);
     const map = {};
     pos.forEach((p) => { map[p.ticker] = { shares: Number(p.shares), avgCost: Number(p.avg_cost) }; });
@@ -200,6 +199,10 @@ export default function App() {
     const id = setTimeout(() => setMsg(null), 5000);
     return () => clearTimeout(id);
   }, [msg]);
+
+  // Persist current tab + timeframe so a refresh keeps you where you were.
+  useEffect(() => { try { localStorage.setItem("pe_tab", tab); } catch { /* ignore */ } }, [tab]);
+  useEffect(() => { try { localStorage.setItem("pe_tf", tf); } catch { /* ignore */ } }, [tf]);
 
   useEffect(() => {
     if (phase !== "app" || !active) return;

@@ -290,7 +290,7 @@ export default function App() {
   function onSearchChange(v) {
     setSearch(v);
     clearTimeout(searchTimer.current);
-    if (v.trim().length < 1) { setResults([]); return; }
+    if (v.trim().length < 2) { setResults([]); return; } // a single letter gives noisy Yahoo results
     searchTimer.current = setTimeout(async () => {
       const r = await searchSymbols(v);
       setResults(r);
@@ -446,7 +446,8 @@ export default function App() {
       {searchModal && (
         <div onClick={closeSearch} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(13,17,23,0.35)", display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: "12vh" }}>
           {(() => {
-            const shown = search.trim() ? results : TOP_STOCKS;
+            const searching = search.trim().length >= 2;
+            const shown = searching ? results : TOP_STOCKS;
             return (
               <div onClick={(e) => e.stopPropagation()} style={{ width: "min(560px,92vw)", background: C.card, borderRadius: 16, boxShadow: "0 24px 64px rgba(13,17,23,0.28)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${C.line}` }}>
@@ -471,7 +472,7 @@ export default function App() {
                     </div>
                   </>
                 )}
-                <div style={{ padding: "8px 18px 4px", fontSize: 11, color: C.dim, fontWeight: 600, letterSpacing: "0.04em" }}>{search.trim() ? "RESULTS" : "BIGGEST COMPANIES"}</div>
+                <div style={{ padding: "8px 18px 4px", fontSize: 11, color: C.dim, fontWeight: 600, letterSpacing: "0.04em" }}>{searching ? "RESULTS" : "BIGGEST COMPANIES"}</div>
                 <div style={{ maxHeight: "52vh", overflowY: "auto", paddingBottom: 6 }}>
                   {shown.map((r) => {
                     const d = live[r.symbol];
@@ -491,7 +492,7 @@ export default function App() {
                       </button>
                     );
                   })}
-                  {search.trim() && shown.length === 0 && <div style={{ padding: "10px 18px", fontSize: 13, color: C.dim }}>No matches — try a company name or ticker.</div>}
+                  {searching && shown.length === 0 && <div style={{ padding: "10px 18px", fontSize: 13, color: C.dim }}>No matches — try a company name or ticker.</div>}
                 </div>
               </div>
             );

@@ -21,9 +21,9 @@ export default function StockDetail({
   tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, onBack,
 }) {
   const [order, setOrder] = useState(null);
-  const [showAbout, setShowAbout] = useState(false);
+  const [aboutFull, setAboutFull] = useState(false); // "See all" → full About takeover
   const [hover, setHover] = useState(null); // { value, label } from chart hover, or null
-  useEffect(() => { setHover(null); }, [active, tf]); // clear stale hover on switch
+  useEffect(() => { setHover(null); setAboutFull(false); }, [active, tf]); // clear on switch
 
   // Chart series is ALWAYS synthetic (free Finnhub has no history) — illustrative.
   // Anchor it to the live price: scale the mock series so its LAST point equals the
@@ -226,23 +226,48 @@ export default function StockDetail({
           ["52-wk low", stock.week52Low != null ? money(stock.week52Low, cur) : null],
           ["Website", web],
         ];
-        if (!m.desc && !fields.some(([, v]) => v)) return null;
+        const shownFields = fields.filter(([, v]) => v);
+        if (!m.desc && shownFields.length === 0) return null;
         const desc = m.desc || `${stock.name} is listed on ${stock.exchange || "the market"}${industry ? `, in the ${industry} industry` : ""}.`;
+        const fieldRow = ([l, v]) => (
+          <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 16, borderBottom: `1px solid ${C.lineSoft}`, paddingBottom: 8, fontSize: 13 }}>
+            <span style={{ color: C.dim }}>{l}</span>
+            <span style={{ fontWeight: 500, textAlign: "right" }}>{v}</span>
+          </div>
+        );
         return (
           <div style={{ padding: "22px 28px 28px", margin: "22px 0 0", borderTop: `1px solid ${C.line}` }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>About</div>
-              {m.desc && <button onClick={() => setShowAbout((s) => !s)} style={{ border: "none", background: "none", color: C.blue, fontWeight: 600, fontSize: 13 }}>{showAbout ? "See less" : "See all"}</button>}
+              <button onClick={() => setAboutFull(true)} style={{ border: "none", background: "none", color: C.blue, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>See all</button>
             </div>
-            <p style={{ margin: "0 0 16px", fontSize: 13.5, lineHeight: 1.6, color: C.dim, ...(m.desc && !showAbout ? { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } : {}) }}>{desc}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 32px" }}>
-              {fields.map(([l, v]) => v && (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${C.lineSoft}`, paddingBottom: 8, fontSize: 13 }}>
-                  <span style={{ color: C.dim }}>{l}</span>
-                  <span style={{ fontWeight: 500 }}>{v}</span>
+            {/* bordered card (Trading 212 style) */}
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
+              <p style={{ margin: "0 0 16px", fontSize: 13.5, lineHeight: 1.6, color: C.dim, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{desc}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 32px" }}>
+                {shownFields.slice(0, 6).map(fieldRow)}
+              </div>
+            </div>
+
+            {/* full takeover when "See all" is clicked */}
+            {aboutFull && (
+              <div onClick={() => setAboutFull(false)} style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(13,17,23,0.45)", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "6vh 16px" }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: "min(720px,96vw)", maxHeight: "88vh", overflowY: "auto", background: C.card, borderRadius: 20, boxShadow: "0 24px 64px rgba(13,17,23,0.3)", padding: 28 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+                    <button onClick={() => setAboutFull(false)} className="btn" aria-label="Back" style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${C.line}`, background: C.card, color: C.dim, fontSize: 16 }}>←</button>
+                    <Logo ticker={active} size={44} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, color: C.dim }}>{active}{stock.exchange ? ` · ${stock.exchange}` : ""}</div>
+                      <div style={{ fontWeight: 700, fontSize: 20 }}>{stock.name}</div>
+                    </div>
+                  </div>
+                  <p style={{ margin: "0 0 22px", fontSize: 14.5, lineHeight: 1.7, color: C.ink }}>{desc}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 40px" }}>
+                    {shownFields.map(fieldRow)}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         );
       })()}

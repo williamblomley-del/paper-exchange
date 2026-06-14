@@ -866,6 +866,17 @@ deposits via a **scheduled server job** (pg_cron).
   ⚠️ **OWNER MUST RUN that SQL** (else rivals' charts are just the invested→now baseline).
 - ⏳ **Photo upload still DEFERRED** (needs a Storage bucket; avatar stays initial+colour tile).
 
+### Milestone 5 — session 5: About card + See-all takeover + search/logo (build ✓)
+- **About = bordered card** (T212 style) in StockDetail; description clamped to 3 lines, first 6
+  fields shown. **"See all"** opens a full-screen takeover overlay (logo + ticker + name header,
+  full description, ALL fields) — `aboutFull` state, resets on ticker/tf switch.
+- **Richer About confirmed live** (US): PLTR shows IPO/shares/52-wk/website. Foreign (RR.L) stays
+  sparse — Finnhub free has no London data (expected; not a bug).
+- **Search single-letter fix**: searching now needs ≥2 chars (a lone letter gave noisy Yahoo
+  results like "R"→Ryder). 1 char shows "Biggest companies". Verified function: "rolls"→Rolls-Royce,
+  "tesla"→Tesla all work — search was never broken, just single-letter was noisy.
+- **RR.L logo override** (Clearbit rolls-royce.com) confirmed working in holdings list.
+
 🎯 OWNER'S DREAM DESIGN (future direction — build for friends, maybe public later):
 - **Landing page**: two options — **Join a game** or **Create a game**; **Sign in** button top-right.
 - **Join**: enter username + password (or create username + password) → land in the portfolio

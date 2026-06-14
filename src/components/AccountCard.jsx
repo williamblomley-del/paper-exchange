@@ -47,7 +47,7 @@ export default function AccountCard({ totalValue, cash, positions, history, inve
         </div>
       </div>
 
-      <BigChart points={perfPoints} resolution="1d" height={70} blue />
+      <BigChart points={perfPoints} resolution="1d" height={70} blue bare />
       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
         {PERF_TFS.map(([key]) => (
           <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 11px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>

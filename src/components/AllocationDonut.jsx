@@ -32,7 +32,8 @@ function spread(ys, gap, min, max) {
   return ys;
 }
 
-export default function AllocationDonut({ items, centerLabel }) {
+export default function AllocationDonut({ items, centerLabel, onSelect }) {
+  const click = (s) => { if (s.ticker && onSelect) onSelect(s.ticker); };
   const W = 520, H = 300, cx = 260, cy = 150, R = 102, r = 62;
   const [hover, setHover] = useState(null); // index of the hovered slice (pops out)
 
@@ -76,20 +77,20 @@ export default function AllocationDonut({ items, centerLabel }) {
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 520, height: "auto", display: "block", margin: "0 auto" }}>
       {slices.map((s, i) => (
         <path
-          key={i} d={s.d} fill={s.color}
+          key={i} d={s.d} fill={s.color} onClick={() => click(s)}
           onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
           transform={hover === i ? `translate(${s.mx * 9} ${s.my * 9})` : undefined}
-          style={{ transition: "transform .13s ease", cursor: "pointer" }}
+          style={{ transition: "transform .13s ease", cursor: s.ticker && onSelect ? "pointer" : "default" }}
         />
       ))}
       {slices.map((s, i) => {
         const labelX = s.right ? cx + R + 50 : cx - R - 50;
         const kneeX = s.right ? cx + R + 16 : cx - R - 16;
         return (
-          <g key={"l" + i}
+          <g key={"l" + i} onClick={() => click(s)}
             onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
             transform={hover === i ? `translate(${s.mx * 9} ${s.my * 9})` : undefined}
-            style={{ transition: "transform .13s ease", cursor: "pointer" }}>
+            style={{ transition: "transform .13s ease", cursor: s.ticker && onSelect ? "pointer" : "default" }}>
             <polyline points={`${s.ax},${s.ay} ${kneeX},${s.ly} ${s.right ? labelX - 6 : labelX + 6},${s.ly}`} fill="none" stroke={C.muted} strokeWidth="1" />
             <text x={labelX} y={s.ly - 2} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 12.5, fontWeight: 700, fill: C.ink }}>{trunc(s.label)}</text>
             <text x={labelX} y={s.ly + 13} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 11.5, fontWeight: 500, fill: C.dim }}>{(s.frac * 100).toFixed(1)}%</text>

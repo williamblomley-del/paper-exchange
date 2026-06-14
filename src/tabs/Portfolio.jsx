@@ -47,7 +47,7 @@ export default function Portfolio({
   // Allocation items grouped by the active view (Shares / Industry / Country).
   function allocItems() {
     if (allocBy === "Shares") {
-      return [...holdings.map((h) => ({ label: h.t, value: h.val })), { label: "Cash", value: cash }]
+      return [...holdings.map((h) => ({ label: h.t, value: h.val, ticker: h.t })), { label: "Cash", value: cash }]
         .sort((a, b) => b.value - a.value);
     }
     const key = allocBy === "Industry" ? "industry" : "country";
@@ -87,7 +87,7 @@ export default function Portfolio({
               <span style={{ fontWeight: 700, fontSize: 13.5 }}>Performance</span>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: perfUp ? C.green : C.red }}>{perfUp ? "↗" : "↘"} {P(Math.abs(perfChg))} ({pct(perfPct)}) <span style={{ color: C.dim, fontWeight: 500 }}>{perfLabel}</span></span>
             </div>
-            <BigChart points={perfPoints} resolution="1d" height={110} blue />
+            <BigChart points={perfPoints} resolution="1d" height={110} blue bare />
             <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
               {PERF_TFS.map(([key, label]) => (
                 <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>
@@ -149,7 +149,7 @@ export default function Portfolio({
                   ))}
                 </div>
               </div>
-              <AllocationDonut items={allocItems()} centerLabel={allocBy} />
+              <AllocationDonut items={allocItems()} centerLabel={allocBy} onSelect={openStock} />
 
               {/* holdings detail table (sorted by value) */}
               <div style={{ marginTop: 38, paddingTop: 26, borderTop: `1px solid ${C.line}` }}>

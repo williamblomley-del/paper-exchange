@@ -13,7 +13,7 @@ function fmtTime(t, res) {
 // the graph to zoom in/out (around the cursor). Hover shows a crosshair tooltip.
 // Optional `avgCost` draws a dashed line at the user's average buy price (only
 // when it falls within the visible price range).
-function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHover }) {
+function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHover, bare }) {
   const wrapRef = useRef(null);
   const [win, setWin] = useState(null); // {lo,hi} zoom window
   const [hov, setHov] = useState(null);
@@ -29,7 +29,7 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
   const m = vals.length;
   const denom = m > 1 ? m - 1 : 1;
   const min = Math.min(...vals), max = Math.max(...vals), range = max - min || max * 0.01 || 1;
-  const W = 800, H = height, px = 4, py = 14, padR = 52;
+  const W = 800, H = height, px = 4, py = 14, padR = bare ? 6 : 52;
   const xAt = (i) => px + (i / denom) * (W - px - padR);
   const yAt = (v) => H - py - ((v - min) / range) * (H - py * 2);
   const xPct = (i) => (xAt(i) / W) * 100;
@@ -38,7 +38,7 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
   const up = vals[m - 1] >= vals[0];
   const col = blue ? C.blue : up ? C.green : C.red;
   const gid = "gp" + height;
-  const levels = [0, 1, 2, 3].map((k) => { const v = min + (range * k) / 3; return { v, y: yAt(v) }; });
+  const levels = bare ? [] : [0, 1, 2, 3].map((k) => { const v = min + (range * k) / 3; return { v, y: yAt(v) }; });
   const showAvg = avgCost != null && avgCost >= min && avgCost <= max;
   const ci = hov != null && hov >= 0 && hov < m ? hov : null;
 
@@ -119,8 +119,8 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
 }
 
 // SYNTHETIC mode: series + count → stretched illustrative chart (account / perf).
-export default function BigChart({ series, count, points, resolution, avgCost, height = 220, forceUp, axes = false, blue = false, zoomable = false, onHover }) {
-  if (points && points.length > 1) return <PointsChart points={points} resolution={resolution} avgCost={avgCost} height={height} blue={blue} zoomable={zoomable} onHover={onHover} />;
+export default function BigChart({ series, count, points, resolution, avgCost, height = 220, forceUp, axes = false, blue = false, zoomable = false, onHover, bare = false }) {
+  if (points && points.length > 1) return <PointsChart points={points} resolution={resolution} avgCost={avgCost} height={height} blue={blue} zoomable={zoomable} onHover={onHover} bare={bare} />;
 
   const vals = series.slice(-count);
   const n = vals.length;

@@ -943,6 +943,31 @@ deposits via a **scheduled server job** (pg_cron).
   Function `{histories}` branch are now UNUSED but left in place (no redeploy needed; harmless).
 - No Edge Function change → **no redeploy needed**. Frontend-only → owner just `git push origin main`.
 
+### Milestone 5 — session 13: per-timeframe perf RESOLUTION (REVERSES session 12) (build ✓)
+- **Owner wanted finer, specific resolution per timeframe** — which daily snapshots CAN'T provide
+  (snapshots are one-per-day). So **reverted session 12**: own-portfolio perf is back on the
+  market-following RECONSTRUCTION (`usePortfolioPerf`, revived), and the **Leaderboard chart also
+  switched to it** (was snapshot `buildPerf`). Both views stay consistent (both reconstruction now).
+  Trade-off re-accepted: smooth + fine-grained but historically approximate (back-projects today's
+  shares; constant cash), vs session 12's exact-but-daily.
+- **Resolution policy** (in `usePortfolioPerf.js` `resolve()`), achieved with **NO Edge redeploy**
+  by fetching an existing feed label + trimming/downsampling client-side:
+  - Own portfolio (fixed per tf): **1D = every 10 min** (fetch 1D 5-min feed, keep every-other →
+    10-min), **1W = hourly** (1M 60-min feed, trimmed to 7d), **1M = daily** (3M daily, trimmed to
+    31d), **1Y = daily**, **All = daily** (<~1y uses 1Y daily bounded to account age; >1y → MAX weekly).
+  - Leaderboard (adaptive to the viewed player's account age): **30-min < 7d** (1W 30-min feed),
+    **hourly < month** (1M 60-min), **daily < year** (1Y), then **weekly** (MAX). Anchored by the
+    player's snapshots (`snaps[0].day`) for account start.
+  - `resolve()` returns `{range, windowDays, down10, res}`; hook filters points to
+    `t >= max(now-windowDays, accountStart)`, downsamples 5m→10m when `down10`, returns `resolution`
+    (`"15m"`/`"1h"` → time tooltip, `"1d"` → date) for BigChart.
+- Leaderboard calls `usePortfolioPerf(selMap, cash, deposited, value, "MAX", snaps, null, "leaderboard")`
+  at top level (before early returns — rules of hooks); built `selMap` from the row's holdings.
+- Re-added the `gameStart` prop chain (App → Market → AccountCard, App → Portfolio) for the account-age
+  anchor. `buildPerf` removed from `perf.js` (now unused; `PERF_TFS` kept for the toggles).
+- ⚠️ **Yahoo has no native 10-min interval** → 1D is the 5-min feed downsampled to 10-min spacing.
+- No Edge Function change → **no redeploy needed**. Frontend-only → owner just `git push origin main`.
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

@@ -3,7 +3,7 @@ import { C } from "../theme.js";
 import { P, pct, money } from "../lib/format.js";
 import { usePrices } from "../lib/pricesContext.js";
 import { loadSnapshots } from "../lib/supabase.js";
-import { buildPerf } from "../lib/perf.js";
+import { usePortfolioPerf } from "../lib/usePortfolioPerf.js";
 import Panel from "../components/Panel.jsx";
 import Stat from "../components/Stat.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -29,6 +29,15 @@ export default function Leaderboard({
     loadSnapshots(selId).then((s) => { if (alive) setSnaps(s); }).catch(() => { if (alive) setSnaps([]); });
     return () => { alive = false; };
   }, [selId]);
+
+  // Selected player's market-following performance curve (adaptive to their account
+  // age: 30-min < 7d, hourly < month, daily < year, then weekly). snaps give the
+  // account-start anchor. Hook must run before any early return (rules of hooks).
+  const selRow = board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0];
+  const selMap = {};
+  (selRow?.holdings || []).forEach((h) => { selMap[h.ticker] = { shares: h.shares, avgCost: h.avgCost }; });
+  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.deposited ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard");
+
   if (!game) {
     return <Panel pad={40}><div style={{ textAlign: "center", color: C.dim, fontSize: 14 }}>You're not in a game yet.</div></Panel>;
   }
@@ -118,16 +127,9 @@ export default function Leaderboard({
             <Stat label="Portfolio Value" value={P(sel.value)} />
             <Stat label="All-Time Return" value={pct(sel.ret)} color={sel.ret >= 0 ? C.green : C.red} />
           </div>
-          {/* real performance from this player's stored snapshots */}
-          {(() => {
-            const perf = buildPerf(snaps, sel.value, 0, sel.deposited || sel.value, "MAX");
-            return (
-              <>
-                <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "4px 0 8px" }}>Performance (all time)</div>
-                <BigChart points={perf.points} resolution="1d" blue height={120} bare />
-              </>
-            );
-          })()}
+          {/* real market-following performance, adaptive resolution by account age */}
+          <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "4px 0 8px" }}>Performance (all time)</div>
+          <BigChart points={lbPerf.points} resolution={lbPerf.resolution} blue height={120} bare />
 
           {/* this player's holdings (read-only) */}
           <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "20px 0 6px" }}>Holdings</div>

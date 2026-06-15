@@ -2,7 +2,8 @@ import { useState } from "react";
 import { C } from "../theme.js";
 import { fmt, P, pct, money } from "../lib/format.js";
 import { MOCK_STOCKS, META } from "../lib/mockData.js";
-import { PERF_TFS, buildPerf } from "../lib/perf.js";
+import { PERF_TFS } from "../lib/perf.js";
+import { usePortfolioPerf } from "../lib/usePortfolioPerf.js";
 import { usePrices } from "../lib/pricesContext.js";
 import Panel from "../components/Panel.jsx";
 import Logo from "../components/Logo.jsx";
@@ -16,7 +17,7 @@ import AssetHeatmap from "../components/AssetHeatmap.jsx";
 // holding swaps to the shared StockDetail). Numbers are weight 500 (light).
 export default function Portfolio({
   totalValue, totalPL, cash, positions, allocation, setActive,
-  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested,
+  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested, gameStart,
   readOnly = false, initialStock = null,
 }) {
   const [selected, setSelected] = useState(initialStock);
@@ -26,14 +27,10 @@ export default function Portfolio({
   const totalRetPct = (totalPL / (invested || 1)) * 100;
   function openStock(t) { setActive(t); setSelected(t); }
 
-  // Performance graph: the REAL stored snapshot history (buildPerf) — exact daily
-  // account values, the same source the leaderboard uses, so all views agree. 1D
-  // uses the live intraday day change (Σ shares × (price − prevClose), real prevClose).
-  const dayChange = Object.entries(positions).reduce((s, [t, p]) => {
-    const d = detailOf(t);
-    return d.prevClose != null ? s + p.shares * (priceOf(t) - d.prevClose) : s;
-  }, 0);
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = buildPerf(history, totalValue, dayChange, invested, perfTf);
+  // Performance graph: a REAL market-following portfolio curve (cash + Σ shares ×
+  // each holding's price history) at the per-timeframe resolution (1D = 10-min,
+  // 1W = hourly, 1M/1Y/All = daily), with a relabeling change.
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
 
   // Holdings enriched + sorted by value (desc) for the right-pane table.
   const holdings = Object.entries(positions).map(([t, p]) => {
@@ -84,7 +81,7 @@ export default function Portfolio({
               <span style={{ fontWeight: 700, fontSize: 13.5 }}>Performance</span>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: perfUp ? C.green : C.red }}>{perfUp ? "↗" : "↘"} {P(Math.abs(perfChg))} ({pct(perfPct)}) <span style={{ color: C.dim, fontWeight: 500 }}>{perfLabel}</span></span>
             </div>
-            <BigChart points={perfPoints} resolution="1d" height={110} blue bare />
+            <BigChart points={perfPoints} resolution={perfRes} height={110} blue bare />
             <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
               {PERF_TFS.map(([key, label]) => (
                 <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>

@@ -929,6 +929,20 @@ deposits via a **scheduled server job** (pg_cron).
   the own-portfolio perf to snapshot-based (exact-but-coarse) — undecided. `usePortfolioPerf` vs
   `buildPerf` (perf.js, still present).
 
+### Milestone 5 — session 12: own-portfolio perf → snapshot-based (RESOLVED) (build ✓)
+- **DECIDED (owner): switch own-portfolio performance to the EXACT snapshot version.** Resolves
+  the session-11 open question. AccountCard + Portfolio now use `buildPerf` (perf.js) — the SAME
+  snapshot-driven source the Leaderboard uses, so your own line and the line rivals see of you
+  agree. Trade-off accepted: exact daily values instead of smooth intraday; **1D stays live**
+  (real day change Σ shares × (price − prevClose), counted only when a real `prevClose` is present),
+  **MAX** anchors invested→now, **W/M/Y fill in as daily snapshots accrue** (a young account looks
+  flat/sparse on those — honest). Both pass `resolution="1d"` to BigChart.
+- **Removed**: the reconstruction hook `src/lib/usePortfolioPerf.js` (deleted, was the only user of
+  the age-adaptive resolution + `fetchHistories`) and the now-dead `gameStart` prop chain
+  (App → Market → AccountCard, App → Portfolio). NOTE: `fetchHistories` (prices.js) + the Edge
+  Function `{histories}` branch are now UNUSED but left in place (no redeploy needed; harmless).
+- No Edge Function change → **no redeploy needed**. Frontend-only → owner just `git push origin main`.
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

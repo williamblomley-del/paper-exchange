@@ -968,6 +968,49 @@ deposits via a **scheduled server job** (pg_cron).
 - ⚠️ **Yahoo has no native 10-min interval** → 1D is the 5-min feed downsampled to 10-min spacing.
 - No Edge Function change → **no redeploy needed**. Frontend-only → owner just `git push origin main`.
 
+### Milestone 5 — session 14: perf-curve start-at-10k + London change + game economy (build ✓)
+**Perf curve (the main ask):** every account's performance curve now ANCHORS at its STARTING
+CAPITAL (`invested` = start cash + deposits, "10k") with a flat "day before you opened"
+segment, on any timeframe whose window reaches account creation; then it moves with the
+market. Fixes the curve starting at a back-projected value (an up account read e.g. −0.12%
+"All time"). "All time" change is now `totalValue − invested` (true return). Also floored the
+all-time cutoff at ~1y when account start is unknown (rival w/o readable snapshots) so it can't
+reach epoch 1970. (`usePortfolioPerf.js`.)
+
+**London daily change (REDEPLOY):** `yahooLive` now measures day change vs PREVIOUS close, not
+the regular close. The old extended-hours baseline broke LSE (.L) — no post-market → ~0.00%.
+SMGB.L / RR.L now show real daily % (and heatmap colour). (`supabase/functions/quote/index.ts`.)
+
+**Frontend polish:** holdings list % → return-since-bought (was daily); AllocationDonut rolls
+only sub-2% into "Other" + Cash always shown unless 0%; Industry/Country allocation falls back to
+LIVE industry/country (profile2) so foreign/searched holdings aren't all "Other"; Leaderboard
+ranks are numbers 1/2/3 (no emojis); chart crosshair no longer jumps during wheel-zoom.
+
+**GAME ECONOMY (NEW `supabase/game_economy.sql` — ⚠️ OWNER MUST RUN; it REPLACES
+`deposits_cron.sql`):**
+- `notifications` table (per recipient membership) + RLS (read/mark-read own; inserts only via
+  SECURITY DEFINER fns/cron). Bell in the nav = dropdown + unread badge, marks read on open,
+  polls 60s. Scoped to the CURRENT membership.
+- `grant_funds(membership, amount)` — creator gives a player money (cash+deposited up, notifies
+  them). UI: Leaderboard selected-player "Give money".
+- `request_funds(membership, amount, note)` — player asks; just NOTIFIES the creator (owner's
+  choice, no approval flow). UI: Portfolio left-column "Request more money".
+- `update_deposit_config(game, amount, cadence, time)` — creator edits recurring deposit + TIME
+  OF DAY (Europe/London); reseeds next_deposit_at via `_next_deposit_at`. UI: Leaderboard
+  "Deposit settings". `games.deposit_time` column added.
+- `apply_due_deposits()` now inserts a "deposit received" notification per player + honours
+  deposit_time. Cron stays */30.
+- supabase.js: loadNotifications/markNotificationsRead/grantFunds/requestFunds/updateDepositConfig;
+  loadMemberships selects games.created_by + deposit_time.
+- ⚠️ **OWNER ACTIONS: (1) `git push origin main`; (2) REDEPLOY the `quote` Edge Function (London
+  fix); (3) run `supabase/game_economy.sql` in the SQL Editor.**
+
+⏳ STILL OPEN / NOT DONE this session:
+- **StockDetail "all time" headline** shows the STOCK's full price history change (e.g. MRVL
+  +2,575%) labelled "all time" — that's the stock, not the holding. May want to relabel/clarify.
+- Deposit "time of day" is Europe/London via pg_cron at */30 → fires within 30 min of the set
+  time, not to the exact minute. Fine for a friends game; note if exactness wanted.
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

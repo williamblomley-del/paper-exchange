@@ -887,6 +887,22 @@ deposits via a **scheduled server job** (pg_cron).
 - **Leaderboard polish** + **click a rival's holding to open that stock** (Leaderboard holdings list
   is currently read-only; pass setActive/setTab in and make rows open StockDetail in Market).
 
+### Milestone 5 — session 7: live market-following portfolio curve + trade popup (build ✓)
+- **Trade UI = centered popup** (like search modal): logo+price header, P£/Shares segmented,
+  big centered amount that rests at "0" and clears on focus, **slider** (accentColor blue),
+  Max/Sell-all, live est cost + buying power, Confirm. Replaced the inline order box. (% chips
+  removed per owner.)
+- **Performance graph is now a REAL market-following curve** (`lib/usePortfolioPerf.js`):
+  value(t) = cash + Σ shares × each holding's price history, at stock-like resolution
+  (1D≈15m, 1W≈30m, 1M≈1h, 1Y≈1d, MAX≈1wk). Ends at live totalValue; moves with the market.
+  It's a "what-if-held-today's-shares" reconstruction (we don't store intraday account history) —
+  ends correct, hovers ~10k because cash is included. Replaced snapshot-based `buildPerf` in
+  AccountCard + Portfolio (snapshots still recorded; `buildPerf`/perf.js `PERF_TFS` kept for keys).
+- **Edge Function `{histories:[tickers], range}`** branch (Yahoo-only, cheap, no Finnhub) →
+  `{histories:{ticker:[{t,c}]}}`; `fetchHistories()` in prices.js. ⚠️ **OWNER MUST REDEPLOY** for
+  the perf curve to work (else it falls back to a flat invested→now line).
+- Bare perf chart (no y-axis) + hover tooltip stays.
+
 🎯 OWNER'S DREAM DESIGN (future direction — build for friends, maybe public later):
 - **Landing page**: two options — **Join a game** or **Create a game**; **Sign in** button top-right.
 - **Join**: enter username + password (or create username + password) → land in the portfolio

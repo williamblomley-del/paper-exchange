@@ -46,6 +46,20 @@ export async function fetchLists() {
   } catch { return {}; }
 }
 
+// Price histories for several tickers at once (Yahoo-only, cheap) → { ticker: [{t,c}] }.
+export async function fetchHistories(tickers, range) {
+  if (!tickers || !tickers.length) return {};
+  try {
+    const res = await fetch(EDGE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${ANON}` },
+      body: JSON.stringify({ histories: tickers, range }),
+    });
+    if (!res.ok) return {};
+    return (await res.json()).histories || {};
+  } catch { return {}; }
+}
+
 // Bulk snapshots (no history) for the watchlist + held tickers.
 export async function fetchPrices(tickers) {
   const results = await Promise.allSettled(tickers.map((t) => fetchQuote(t, null)));

@@ -1,30 +1,20 @@
 import { useState } from "react";
 import { C } from "../theme.js";
 import { P, pct } from "../lib/format.js";
-import { PERF_TFS, buildPerf } from "../lib/perf.js";
-import { usePrices } from "../lib/pricesContext.js";
+import { PERF_TFS } from "../lib/perf.js";
+import { usePortfolioPerf } from "../lib/usePortfolioPerf.js";
 import BigChart from "./BigChart.jsx";
+
+const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d", "MAX": "1mo" };
 
 // Account summary for the top of the Market tab's left column. Renders BARE
 // (no card wrapper) so it sits inside the one connected white Market container.
-// The change stat + chart follow a timeframe toggle (24h / week / month / year /
-// all-time): the "LAST 24H" label relabels to the selected period. Day &
-// all-time changes are REAL; in-between shapes are illustrative (see mockData).
-export default function AccountCard({ totalValue, cash, positions, history, invested }) {
-  const { detailOf } = usePrices();
+// The change stat + chart follow a timeframe toggle and a REAL market-following
+// portfolio curve (value = cash + Σ shares × price history) at stock-like resolution.
+export default function AccountCard({ totalValue, cash, positions, invested }) {
   const [perfTf, setPerfTf] = useState("1D");
   const investedNow = totalValue - cash; // amount currently in holdings
-  let dayChange = 0;
-  Object.entries(positions).forEach(([t, p]) => {
-    const s = detailOf(t);
-    // Only count a holding's day move when we have a REAL previous close — never
-    // fall back to mock data (that produced a fake gain on freshly-bought stocks).
-    if (s.price != null && s.prevClose != null) dayChange += p.shares * (s.price - s.prevClose);
-  });
-
-  // Real performance from stored snapshots (Week/Month/Year fill in over time).
-  const perf = buildPerf(history, totalValue, dayChange, invested, perfTf);
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = perf;
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf);
 
   return (
     <div style={{ padding: "20px 20px 16px" }}>
@@ -47,7 +37,7 @@ export default function AccountCard({ totalValue, cash, positions, history, inve
         </div>
       </div>
 
-      <BigChart points={perfPoints} resolution="1d" height={70} blue bare />
+      <BigChart points={perfPoints} resolution={RES[perfTf]} height={70} blue bare />
       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
         {PERF_TFS.map(([key]) => (
           <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 11px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>

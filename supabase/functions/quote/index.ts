@@ -116,6 +116,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ gainers, losers, actives }), { headers: cors });
     }
 
+    // HISTORIES mode: { histories:[tickers], range } → { histories:{ ticker:[{t,c}] } }
+    // Yahoo-only (no Finnhub) so it's cheap — used to rebuild the portfolio curve.
+    if (body.histories) {
+      const range = body.range || "1Y";
+      const syms = (body.histories || []).slice(0, 40);
+      const out: Record<string, unknown> = {};
+      await Promise.all(syms.map(async (sym: string) => {
+        const y = await yahoo(String(sym).toUpperCase(), range);
+        out[sym] = y?.history || [];
+      }));
+      return new Response(JSON.stringify({ histories: out }), { headers: cors });
+    }
+
     const { ticker, range = null } = body;
     const sym = String(ticker || "").trim().toUpperCase();
     if (!sym) return new Response(JSON.stringify({ error: "No ticker" }), { headers: cors, status: 400 });

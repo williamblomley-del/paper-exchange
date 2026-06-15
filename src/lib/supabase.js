@@ -38,12 +38,20 @@ export function nextDepositAt(cadence) {
 }
 
 // All games this user belongs to, with the game details joined.
+// Resilient to a not-yet-run migration: if the newer `deposit_time` column doesn't
+// exist yet, retry without it so loading your games never silently fails (which
+// would dump you back on the Start/Join screen as if you had no games).
 export async function loadMemberships(userId) {
-  const { data } = await supabase
-    .from("memberships")
-    .select("id, game_id, username, cash, deposited, next_deposit_at, created_at, games(id, code, name, created_by, start_cash, deposit_amount, deposit_cadence, deposit_time)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  const cols = (gameExtra) =>
+    `id, game_id, username, cash, deposited, next_deposit_at, created_at, games(id, code, name, created_by, start_cash, deposit_amount, deposit_cadence${gameExtra})`;
+  let { data, error } = await supabase
+    .from("memberships").select(cols(", deposit_time"))
+    .eq("user_id", userId).order("created_at", { ascending: true });
+  if (error) {
+    ({ data } = await supabase
+      .from("memberships").select(cols(""))
+      .eq("user_id", userId).order("created_at", { ascending: true }));
+  }
   return data || [];
 }
 

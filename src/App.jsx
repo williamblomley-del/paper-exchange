@@ -428,7 +428,7 @@ export default function App() {
 
           {/* right group: search + bell + avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <button onClick={() => setSearchModal(true)} style={{ width: 440, display: "flex", alignItems: "center", gap: 10, padding: "7px 16px", fontSize: 13.5, background: C.fill, color: C.muted, border: `1px solid ${C.line}`, borderRadius: 999, cursor: "pointer", textAlign: "left" }}>
+            <button onClick={() => setSearchModal(true)} style={{ width: 300, display: "flex", alignItems: "center", gap: 9, padding: "12px 18px", fontSize: 14, background: C.fill, color: C.muted, border: `1px solid ${C.line}`, borderRadius: 999, cursor: "pointer", textAlign: "left" }}>
               <span style={{ fontSize: 14 }}>⌕</span> Search
             </button>
             <button className="btn" aria-label="Notifications" title="Notifications" style={{ border: "none", background: "none", padding: 0, color: C.dim, lineHeight: 0, cursor: "pointer" }}>
@@ -545,7 +545,7 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ maxWidth: 1500, margin: "0 auto", padding: "20px 28px" }}>
+      <div style={{ maxWidth: 1500, margin: "0 auto", padding: "20px 28px 0" }}>
         {tab === "market" && (
           <Market
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}

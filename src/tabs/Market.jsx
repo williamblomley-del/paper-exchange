@@ -15,7 +15,7 @@ export default function Market({
     <Panel pad={0}>
       {/* Fixed-height grid so each column scrolls independently (Trading 212 style):
           scrolling the watchlist on the left doesn't move the stock detail on the right. */}
-      <div style={{ display: "grid", gridTemplateColumns: "470px 1fr", height: "calc(100vh - 124px)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "470px 1fr", height: "calc(100vh - 104px)" }}>
         {/* LEFT — account + watchlist, divided from the right by one line; own scroll */}
         <div className="colscroll" style={{ borderRight: `1px solid ${C.line}`, overflowY: "auto", minHeight: 0 }}>
           <AccountCard totalValue={totalValue} cash={cash} positions={positions} history={history} invested={invested} gameStart={gameStart} />

@@ -56,7 +56,7 @@ export default function Portfolio({
     <Panel pad={0}>
       {/* Fixed-height grid so each column scrolls independently (Trading 212 style):
           scrolling holdings/heatmap on the left doesn't move the allocation on the right. */}
-      <div style={{ display: "grid", gridTemplateColumns: "470px 1fr", height: "calc(100vh - 124px)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "470px 1fr", height: "calc(100vh - 104px)" }}>
         {/* LEFT (narrow) — own scroll */}
         <div className="colscroll" style={{ borderRight: `1px solid ${C.line}`, overflowY: "auto", minHeight: 0 }}>
           {/* overview */}

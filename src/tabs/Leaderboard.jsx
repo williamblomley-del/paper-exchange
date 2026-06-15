@@ -124,7 +124,7 @@ export default function Leaderboard({
             return (
               <>
                 <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, margin: "4px 0 8px" }}>Performance (all time)</div>
-                <BigChart points={perf.points} resolution="1d" blue height={120} />
+                <BigChart points={perf.points} resolution="1d" blue height={120} bare />
               </>
             );
           })()}

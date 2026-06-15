@@ -428,10 +428,12 @@ export default function App() {
 
           {/* right group: search + bell + avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <button onClick={() => setSearchModal(true)} style={{ width: 360, display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", fontSize: 14, background: C.fill, color: C.muted, border: `1px solid ${C.line}`, borderRadius: 999, cursor: "pointer", textAlign: "left" }}>
-              <span style={{ fontSize: 14 }}>⌕</span> Search companies…
+            <button onClick={() => setSearchModal(true)} style={{ width: 440, display: "flex", alignItems: "center", gap: 10, padding: "7px 16px", fontSize: 13.5, background: C.fill, color: C.muted, border: `1px solid ${C.line}`, borderRadius: 999, cursor: "pointer", textAlign: "left" }}>
+              <span style={{ fontSize: 14 }}>⌕</span> Search
             </button>
-            <button className="btn" aria-label="Notifications" style={{ border: "none", background: "none", fontSize: 19, color: C.dim, lineHeight: 1 }}>🔔</button>
+            <button className="btn" aria-label="Notifications" title="Notifications" style={{ border: "none", background: "none", padding: 0, color: C.dim, lineHeight: 0, cursor: "pointer" }}>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+            </button>
             <div style={{ position: "relative" }}>
               <button onClick={() => setMenuOpen((o) => !o)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }} aria-label="Account"><Avatar name={username} size={34} /></button>
               {menuOpen && (

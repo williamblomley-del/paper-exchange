@@ -9,10 +9,10 @@ import BigChart from "./BigChart.jsx";
 // (no card wrapper) so it sits inside the one connected white Market container.
 // The change stat + chart follow a timeframe toggle and a REAL market-following
 // portfolio curve at the per-timeframe resolution (1D = 10-min, 1W = hourly, daily above).
-export default function AccountCard({ totalValue, cash, positions, startCash, history, gameStart }) {
+export default function AccountCard({ totalValue, cash, positions, startCash, deposited, history, gameStart }) {
   const [perfTf, setPerfTf] = useState("1D");
   const investedNow = totalValue - cash; // amount currently in holdings
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, startCash, totalValue, perfTf, history, gameStart);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, startCash, totalValue, perfTf, history, gameStart, "own", deposited);
 
   return (
     <div style={{ padding: "20px 20px 16px" }}>

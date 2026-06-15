@@ -29,7 +29,7 @@ function resolve(tf, ageDays, mode) {
   }
 }
 
-export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own") {
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -105,8 +105,18 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
     const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
     points = [{ t: startT, c: baseCap }, tail];
   }
-  const base = points[0].c;
-  const chg = points[points.length - 1].c - base;
-  const pct = base ? (chg / base) * 100 : 0;
+  // % EXCLUDES deposits: for views back to account open, measure vs total capital in
+  // (`deposited` = start cash + every deposit) so a deposit doesn't count as performance.
+  // The graph still STARTS at the start cash and shows deposits as the line rising — the
+  // % just doesn't credit them. Shorter windows (not back to open) use the window start.
+  let chg, pct;
+  if (includesOpen && deposited != null) {
+    chg = totalValue - deposited;
+    pct = deposited ? (chg / deposited) * 100 : 0;
+  } else {
+    const base = points[0].c;
+    chg = points[points.length - 1].c - base;
+    pct = base ? (chg / base) * 100 : 0;
+  }
   return { points, chg, pct, up: chg >= 0, label, resolution: res };
 }

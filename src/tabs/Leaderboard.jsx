@@ -46,7 +46,7 @@ export default function Leaderboard({
   const selRow = board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0];
   const selMap = {};
   (selRow?.holdings || []).forEach((h) => { selMap[h.ticker] = { shares: h.shares, avgCost: h.avgCost }; });
-  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard");
+  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard", selRow?.deposited);
 
   if (!game) {
     return <Panel pad={40}><div style={{ textAlign: "center", color: C.dim, fontSize: 14 }}>You're not in a game yet.</div></Panel>;
@@ -84,7 +84,7 @@ export default function Leaderboard({
         <Portfolio
           readOnly initialStock={viewStock}
           positions={map} cash={m.cash ?? 0} totalValue={m.value}
-          totalPL={m.value - (m.startCash ?? game?.start_cash ?? 0)} startCash={m.startCash ?? game?.start_cash ?? 0}
+          totalPL={m.value - (m.deposited ?? m.startCash ?? 0)} startCash={m.startCash ?? game?.start_cash ?? 0} deposited={m.deposited ?? m.startCash ?? 0}
           active={active} setActive={setActive} tf={tf} setTf={setTf}
           tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt} setTradeAmt={setTradeAmt}
           trade={() => {}} history={snaps}

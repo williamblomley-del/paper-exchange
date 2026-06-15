@@ -297,15 +297,16 @@ export default function App() {
     const priceMap = await fetchPrices([...tickers]).catch(() => ({}));
     setLive((prev) => ({ ...prev, ...priceMap }));
     const px = (t) => priceMap[t]?.price ?? live[t]?.price ?? MOCK_STOCKS[t]?.price ?? null;
-    // Returns are measured vs the game's ORIGINAL start cash (deposits count as
-    // balance growth — the "simple" model), shared by everyone in the game.
+    // Return % is measured vs total capital in (`deposited`) so deposits don't count as
+    // performance; `startCash` (same for everyone in the game) anchors the graph at 10k.
     const sc = Number(game?.start_cash) || 10000;
     const ranked = rows.map((r) => {
       let v = Number(r.cash);
       (r.positions || []).forEach((x) => { v += Number(x.shares) * (px(x.ticker) ?? Number(x.avg_cost)); });
+      const dep = Number(r.deposited) || sc;
       return {
-        id: r.id, username: r.username, value: v, ret: ((v - sc) / sc) * 100,
-        cash: Number(r.cash), deposited: Number(r.deposited) || sc, startCash: sc,
+        id: r.id, username: r.username, value: v, ret: ((v - dep) / dep) * 100,
+        cash: Number(r.cash), deposited: dep, startCash: sc,
         holdings: (r.positions || []).map((x) => ({ ticker: x.ticker, shares: Number(x.shares), avgCost: Number(x.avg_cost) })),
       };
     }).sort((a, b) => b.value - a.value);
@@ -324,10 +325,12 @@ export default function App() {
     return v;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cash, positions, live]);
-  // Performance is measured vs the game's ORIGINAL start cash ("10k"); recurring
-  // deposits count as balance growth (the "simple" model), not excluded as capital.
+  // The graph STARTS at the game's original start cash ("10k"); but return % is measured
+  // vs total capital in (`deposited` = start cash + deposits) so deposits don't count as
+  // performance. Deposits still show on the graph as the line rising.
   const startCash = Number(game?.start_cash) || 10000;
-  const totalPL = totalValue - startCash;
+  const deposited = Number(mem?.deposited) || startCash;
+  const totalPL = totalValue - deposited;
   const allocation = useMemo(() => {
     const items = Object.entries(positions).map(([t, p], i) => ({
       ticker: t, name: MOCK_STOCKS[t]?.name ?? t,
@@ -630,7 +633,7 @@ export default function App() {
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}
             positions={positions} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} cash={cash}
-            totalValue={totalValue} history={history} startCash={startCash} lists={lists} gameStart={mem?.created_at}
+            totalValue={totalValue} history={history} startCash={startCash} deposited={deposited} lists={lists} gameStart={mem?.created_at}
           />
         )}
 
@@ -639,7 +642,7 @@ export default function App() {
             totalValue={totalValue} totalPL={totalPL} cash={cash} positions={positions}
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
-            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} gameStart={mem?.created_at}
+            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} deposited={deposited} gameStart={mem?.created_at}
             onRequestMoney={handleRequest}
           />
         )}

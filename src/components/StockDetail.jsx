@@ -203,7 +203,7 @@ export default function StockDetail({
 
       {/* chart */}
       <div style={{ padding: "0 28px" }}>
-        <BigChart {...(hasReal ? { points: hist, resolution: RES[tf] } : { series, count })} avgCost={pos ? pos.avgCost : undefined} height={272} axes blue zoomable={tf === "MAX"} onHover={setHover} />
+        <BigChart {...(hasReal ? { points: hist, resolution: RES[tf] } : { series, count })} avgCost={pos ? pos.avgCost : undefined} height={272} bare blue zoomable={tf === "MAX"} onHover={setHover} />
         <div style={{ display: "flex", gap: 2, justifyContent: "center", margin: "14px 0 6px" }}>
           {TIMEFRAMES.map(([label]) => (
             <button key={label} onClick={() => setTf(label)} className="tfbtn" style={{ padding: "7px 15px", fontSize: 12.5, fontWeight: 600, border: "none", borderRadius: 8, background: tf === label ? C.fill : "transparent", color: tf === label ? C.ink : C.dim }}>{label}</button>

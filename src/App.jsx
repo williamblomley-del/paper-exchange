@@ -184,7 +184,7 @@ export default function App() {
         return n;
       })).catch(() => {});
       if (active) fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
-    }, 60000);
+    }, 30000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, positions, active, tf]);

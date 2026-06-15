@@ -41,18 +41,13 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf) {
 
   const label = LABEL[tf];
   const now = Math.floor(Date.now() / 1000);
-  const baseCap = invested || totalValue || 1; // your starting capital (e.g. 10k)
-  if (!hist || hist.length < 2) {
-    return { points: [{ t: now - 86400, c: baseCap }, { t: now, c: totalValue }], chg: totalValue - baseCap, pct: ((totalValue - baseCap) / baseCap) * 100, up: totalValue >= baseCap, label };
-  }
-  // INDEX the curve to your starting capital: every timeframe begins at baseCap (10k)
-  // and grows/falls by the holdings' return over the window. value(t) scaled by
-  // baseCap / value(start), and the live tail scaled the same way → consistent.
-  const v0 = hist[0].c || baseCap;
-  const scale = baseCap / v0;
-  const points = hist.map((p) => ({ t: p.t, c: p.c * scale }));
-  points.push({ t: now, c: totalValue * scale });
-  const base = points[0].c; // == baseCap
+  const baseCap = invested || totalValue || 1;
+  // Append the LIVE current value as the final point, UN-scaled, so the line ENDS
+  // exactly on the headline total value. (Start = the account's real value at the
+  // window's beginning, not forced to 10k — owner's chosen trade-off.)
+  const tail = { t: now, c: totalValue };
+  const points = hist && hist.length ? [...hist, tail] : [{ t: now - 86400, c: baseCap }, tail];
+  const base = points[0].c;
   const chg = points[points.length - 1].c - base;
   const pct = base ? (chg / base) * 100 : 0;
   return { points, chg, pct, up: chg >= 0, label };

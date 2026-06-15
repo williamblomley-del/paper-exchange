@@ -882,10 +882,20 @@ deposits via a **scheduled server job** (pg_cron).
   forces the Market tab. **Default timeframe is now 1D** (was 1Y); last choice persists.
 - **RR.L logo** fixed via its RYCEY ADR (Clearbit was blocked/0-bytes).
 
-⏳ OPEN (next session — owner ran low on usage):
+### Milestone 5 — session 8: perf curve ends-on-live + 30s refresh + bare stock chart
+- **Perf curve now ENDS exactly on the live total value** (owner's chosen trade-off over
+  "starts at 10k"): `usePortfolioPerf` appends the live `totalValue` un-scaled as the final point;
+  start = the account's real value at the window's beginning. (Earlier indexed-to-10k version reverted.)
+- **Stock chart (StockDetail) is bare** now too (no gridlines/price labels), like the perf chart.
+- **Auto-refresh 60s → 30s**.
+
+⏳ OPEN (next session):
+- **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
+  offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side
+  OR a relay; to keep the key server-side, proxy via a Supabase Edge Function / separate WS relay.
+  Replaces/augments the 30s polling. Bigger build — flagged for later.
 - **Photo upload** for avatars (needs a Supabase Storage bucket; avatar still initial+colour tile).
-- **Leaderboard polish** + **click a rival's holding to open that stock** (Leaderboard holdings list
-  is currently read-only; pass setActive/setTab in and make rows open StockDetail in Market).
+- **Leaderboard polish** + **click a rival's holding to open that stock** (read-only list now).
 
 ### Milestone 5 — session 7: live market-following portfolio curve + trade popup (build ✓)
 - **Trade UI = centered popup** (like search modal): logo+price header, P£/Shares segmented,

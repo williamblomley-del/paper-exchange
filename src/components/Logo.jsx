@@ -22,9 +22,10 @@ export default function Logo({ ticker, size = 30, round = false, src = null }) {
   const hasSuffix = ticker ? ticker.includes(".") : false;
   const base = ticker ? ticker.split(".")[0] : null;
   const FMP = (s) => `https://financialmodelingprep.com/image-stock/${s}.png`;
+  const PQ = (s) => `https://assets.parqet.com/logos/symbol/${s}?format=png`; // covers FMP gaps
   const candidates = (override
     ? [override]
-    : [src, detailOf(ticker)?.logo, ticker && FMP(ticker), !hasSuffix && base && FMP(base)])
+    : [src, detailOf(ticker)?.logo, ticker && FMP(ticker), !hasSuffix && base && FMP(base), base && PQ(base)])
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i); // dedupe (US tickers: full === base)
   const [idx, setIdx] = useState(0);

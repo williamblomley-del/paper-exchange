@@ -24,13 +24,13 @@ export default function Portfolio({
   const [selected, setSelected] = useState(null);
   const [allocBy, setAllocBy] = useState("Shares"); // Shares | Industry | Country
   const [perfTf, setPerfTf] = useState("MAX");       // performance-graph timeframe
-  const { priceOf, curOf, detailOf } = usePrices();
+  const { priceOf, curOf, detailOf, chgOf } = usePrices();
   const totalRetPct = (totalPL / (invested || 1)) * 100;
   function openStock(t) { setActive(t); setSelected(t); }
 
   // Performance graph: a REAL market-following portfolio curve (cash + Σ shares ×
   // each holding's price history) at stock-like resolution, with a relabeling change.
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history);
 
   // Holdings enriched + sorted by value (desc) for the right-pane table.
   const holdings = Object.entries(positions).map(([t, p]) => {
@@ -94,8 +94,9 @@ export default function Portfolio({
             <span style={{ fontWeight: 700, fontSize: 14 }}>Holdings</span>
             <span style={{ fontSize: 12, color: C.dim }}>{holdings.length} positions</span>
           </div>
-          {holdings.map(({ t, val, plP }) => {
+          {holdings.map(({ t, val }) => {
             const on = selected === t;
+            const day = chgOf(t); // today's % change (what "the stock went up" means)
             return (
               <div key={t} onClick={() => openStock(t)} className="wrow" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", padding: "11px 20px", cursor: "pointer", borderBottom: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${on ? C.blue : "transparent"}`, background: on ? "rgba(70,160,255,0.06)" : "transparent" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -107,7 +108,7 @@ export default function Portfolio({
                 </span>
                 <span style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 13.5, fontWeight: 400 }}>{P(val)}</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: plP >= 0 ? C.green : C.red }}>{pct(plP)}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: day >= 0 ? C.green : C.red }}>{pct(day)}</div>
                 </span>
               </div>
             );

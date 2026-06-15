@@ -889,6 +889,20 @@ deposits via a **scheduled server job** (pg_cron).
 - **Stock chart (StockDetail) is bare** now too (no gridlines/price labels), like the perf chart.
 - **Auto-refresh 60s → 30s**.
 
+### Milestone 5 — session 9: fix +490% perf + frozen prices + daily % (build ✓)
+- **+490% "All time" perf BUG fixed**: the reconstruction valued CURRENT shares at prices from
+  before the account existed (NVDA years ago → tiny base → fake +490%). `usePortfolioPerf` now
+  bounds each holding's history to `>= accountStartT` (first snapshot day, passed via `history`).
+  New accounts → long TFs collapse to the real invested→now fallback (~correct small %); fills in
+  as snapshots accrue. AccountCard/Portfolio now pass `history` to the hook.
+- **Frozen prices + missing daily % fixed**: holdings were served by the 10-min `price_cache`
+  (minimal {price,name,logo}, no changePct → stale + no daily move). NEW `{quotes:[tickers]}` Edge
+  Function branch = fresh price+change+changePct+prevClose, 1 Finnhub call/ticker, NO cache.
+  `fetchQuotes()` in prices.js. App uses it for HELD tickers on load + every 30s (merged per-ticker
+  to keep logo/currency). Watchlist still uses cheap cached `fetchPrices`. ⚠️ **OWNER MUST REDEPLOY.**
+- **Portfolio holdings list now shows TODAY'S % change** (chgOf), not P/L-vs-cost (which is ~0 right
+  after buying). Right-pane table still shows return vs cost.
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

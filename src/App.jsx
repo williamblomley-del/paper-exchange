@@ -3,7 +3,7 @@ import { C, DONUT } from "./theme.js";
 import { fmt, P, money, pct, currencyOf } from "./lib/format.js";
 import { MOCK_STOCKS, WATCH } from "./lib/mockData.js";
 import { supabase, configured, signOut, loadMemberships, createGame, joinGame, loadGameData, recordSnapshot, loadBoardRows, updateUsername } from "./lib/supabase.js";
-import { fetchQuote, fetchPrices, searchSymbols, fetchLists } from "./lib/prices.js";
+import { fetchQuote, fetchQuotes, fetchPrices, searchSymbols, fetchLists } from "./lib/prices.js";
 import { PricesCtx } from "./lib/pricesContext.js";
 import GlobalStyles from "./components/GlobalStyles.jsx";
 import Avatar from "./components/Avatar.jsx";
@@ -153,12 +153,13 @@ export default function App() {
       const today = new Date().toISOString().slice(0, 10);
       setHistory((h) => [...h.filter((x) => x.day !== today), { day: today, value: v }]);
     }).catch(() => {});
-    // Upgrade HELD tickers with FULL quotes (real prevClose → accurate day change).
-    // The cheap bulk fetch can hit the 10-min cache and omit prevClose, which made
-    // the day-change / performance line wrong. A range bypasses the cache.
-    Object.keys(positions).forEach((t) => {
-      fetchQuote(t, "1D").then((d) => setLive((prev) => ({ ...prev, [t]: { ...prev[t], ...d } }))).catch(() => {});
-    });
+    // Fresh live quotes for HELD tickers (bypasses cache) → real price + daily change,
+    // merged per-ticker so logo/name/currency from the full load are kept.
+    fetchQuotes(Object.keys(positions)).then((qmap) => setLive((prev) => {
+      const n = { ...prev };
+      for (const k in qmap) n[k] = { ...prev[k], ...qmap[k] };
+      return n;
+    })).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentMid]);
 
@@ -177,12 +178,9 @@ export default function App() {
       // Lightweight tick: one cheap (server-cached) bulk price pull, MERGED per
       // ticker so we keep each holding's prevClose (a daily value fetched on load).
       // No per-holding history refetch here — that was heavy and caused jank.
-      const tickers = Array.from(new Set([...WATCH, ...Object.keys(positions)]));
-      fetchPrices(tickers).then((map) => setLive((prev) => {
-        const n = { ...prev };
-        for (const k in map) n[k] = { ...prev[k], ...map[k] };
-        return n;
-      })).catch(() => {});
+      const merge = (map) => setLive((prev) => { const n = { ...prev }; for (const k in map) n[k] = { ...prev[k], ...map[k] }; return n; });
+      fetchPrices(WATCH).then(merge).catch(() => {});                 // watchlist (cheap, cached)
+      fetchQuotes(Object.keys(positions)).then(merge).catch(() => {}); // holdings: FRESH price + daily %
       if (active) fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
     }, 30000);
     return () => clearInterval(id);

@@ -8,17 +8,20 @@ import { fetchHistories } from "./prices.js";
 // window (a "what-if-held" view) — we don't store minute-by-minute account history.
 const LABEL = { "1D": "Last 24h", "1W": "Last week", "1M": "Last month", "1Y": "Last year", "MAX": "All time" };
 
-export function usePortfolioPerf(positions, cash, invested, totalValue, tf) {
+export function usePortfolioPerf(positions, cash, invested, totalValue, tf, history) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
-  const key = tickers.slice().sort().join(",") + "|" + tf + "|" + cash;
+  // Don't reconstruct before the account existed — valuing today's shares at prices
+  // from before you joined gives nonsense (e.g. NVDA years ago → fake +490%).
+  const accountStartT = history && history.length ? Math.floor(Date.parse(history[0].day) / 1000) : 0;
+  const key = tickers.slice().sort().join(",") + "|" + tf + "|" + cash + "|" + accountStartT;
 
   useEffect(() => {
     let alive = true;
     if (tickers.length === 0) { setHist(null); return; }
     fetchHistories(tickers, tf).then((hmap) => {
       if (!alive) return;
-      const series = tickers.map((t) => ({ shares: positions[t].shares, h: (hmap[t] || []).filter((p) => p && p.c != null) }));
+      const series = tickers.map((t) => ({ shares: positions[t].shares, h: (hmap[t] || []).filter((p) => p && p.c != null && p.t >= accountStartT) }));
       const tsSet = new Set();
       series.forEach((s) => s.h.forEach((p) => tsSet.add(p.t)));
       const ts = [...tsSet].sort((a, b) => a - b);

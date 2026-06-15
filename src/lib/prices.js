@@ -46,6 +46,21 @@ export async function fetchLists() {
   } catch { return {}; }
 }
 
+// Fresh live quotes (price + daily change) for several tickers, bypassing the cache
+// → { ticker: { price, change, changePct, prevClose } }. For the live holdings refresh.
+export async function fetchQuotes(tickers) {
+  if (!tickers || !tickers.length) return {};
+  try {
+    const res = await fetch(EDGE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${ANON}` },
+      body: JSON.stringify({ quotes: tickers }),
+    });
+    if (!res.ok) return {};
+    return (await res.json()).quotes || {};
+  } catch { return {}; }
+}
+
 // Price histories for several tickers at once (Yahoo-only, cheap) → { ticker: [{t,c}] }.
 export async function fetchHistories(tickers, range) {
   if (!tickers || !tickers.length) return {};

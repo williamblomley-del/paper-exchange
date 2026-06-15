@@ -116,6 +116,27 @@ serve(async (req) => {
       return new Response(JSON.stringify({ gainers, losers, actives }), { headers: cors });
     }
 
+    // QUOTES mode: { quotes:[tickers] } → fresh { ticker:{price,change,changePct,prevClose} }
+    // Light: 1 Finnhub call/ticker (Yahoo fallback), NO cache — for live holdings refresh.
+    if (body.quotes) {
+      const syms = (body.quotes || []).slice(0, 40);
+      const out: Record<string, unknown> = {};
+      await Promise.all(syms.map(async (raw: string) => {
+        const sym = String(raw).toUpperCase();
+        const q = await fh(`quote?symbol=${sym}`);
+        if (q && q.c) {
+          out[sym] = { price: q.c, change: q.d, changePct: q.dp, prevClose: q.pc };
+        } else {
+          const y = await yahoo(sym, null);
+          if (y && y.price != null) {
+            const ch = y.price - (y.prevClose ?? y.price);
+            out[sym] = { price: y.price, change: ch, changePct: y.prevClose ? (ch / y.prevClose) * 100 : 0, prevClose: y.prevClose };
+          }
+        }
+      }));
+      return new Response(JSON.stringify({ quotes: out }), { headers: cors });
+    }
+
     // HISTORIES mode: { histories:[tickers], range } → { histories:{ ticker:[{t,c}] } }
     // Yahoo-only (no Finnhub) so it's cheap — used to rebuild the portfolio curve.
     if (body.histories) {

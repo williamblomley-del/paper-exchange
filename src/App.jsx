@@ -169,6 +169,16 @@ export default function App() {
     fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
   }, [active, tf, phase]);
 
+  // Fast, cheap price tick for the stock you're VIEWING (every 12s) so its headline
+  // + chart edge move on their own without a full history refetch. (Yahoo-only.)
+  useEffect(() => {
+    if (phase !== "app" || !active) return;
+    const id = setInterval(() => {
+      fetchQuotes([active]).then((qmap) => { if (qmap[active]) setLive((prev) => ({ ...prev, [active]: { ...prev[active], ...qmap[active] } })); }).catch(() => {});
+    }, 12000);
+    return () => clearInterval(id);
+  }, [active, phase]);
+
   // Live auto-refresh: re-pull prices every 60s so value/day-change/charts tick
   // with the market without a manual refresh. (Watchlist is server-cached so this
   // stays well under Finnhub's free 60/min limit.)

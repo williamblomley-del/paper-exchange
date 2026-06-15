@@ -45,6 +45,11 @@ export default function StockDetail({
   const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "3M": "1d", "6M": "1d", "1Y": "1d", "MAX": "1mo" };
   const hist = Array.isArray(stock.history) ? stock.history : [];
   const hasReal = hist.length > 1;
+  // Extend the line to the LIVE price so the chart's right edge tracks the current
+  // price as it ticks (without waiting for the next history refetch).
+  const liveHist = hasReal && stock.price != null
+    ? [...hist, { t: Math.floor(Date.now() / 1000), c: stock.price }]
+    : hist;
 
   // Headline price + change: REAL when live data is present (day change, "today");
   // otherwise fall back to the (scaled) synthetic series' move over the timeframe.
@@ -203,7 +208,7 @@ export default function StockDetail({
 
       {/* chart */}
       <div style={{ padding: "0 28px" }}>
-        <BigChart {...(hasReal ? { points: hist, resolution: RES[tf] } : { series, count })} avgCost={pos ? pos.avgCost : undefined} height={272} bare blue zoomable={tf === "MAX"} onHover={setHover} />
+        <BigChart {...(hasReal ? { points: liveHist, resolution: RES[tf] } : { series, count })} avgCost={pos ? pos.avgCost : undefined} height={272} bare blue zoomable={tf === "MAX"} onHover={setHover} />
         <div style={{ display: "flex", gap: 2, justifyContent: "center", margin: "14px 0 6px" }}>
           {TIMEFRAMES.map(([label]) => (
             <button key={label} onClick={() => setTf(label)} className="tfbtn" style={{ padding: "7px 15px", fontSize: 12.5, fontWeight: 600, border: "none", borderRadius: 8, background: tf === label ? C.fill : "transparent", color: tf === label ? C.ink : C.dim }}>{label}</button>

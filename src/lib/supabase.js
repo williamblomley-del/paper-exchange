@@ -106,6 +106,22 @@ export async function loadSnapshots(membershipId) {
   return data || [];
 }
 
+// ── value_history (accurate, recorded performance timeline) ──────────────────
+// Timestamped account-value points (recorded ~every 15 min while the app is open,
+// + a step written server-side on deposits/grants). t is returned as epoch seconds.
+export async function loadValueHistory(membershipId) {
+  if (!membershipId) return [];
+  const { data } = await supabase
+    .from("value_history").select("t, value")
+    .eq("membership_id", membershipId).order("t", { ascending: true }).limit(3000);
+  return (data || []).map((r) => ({ t: Math.floor(Date.parse(r.t) / 1000), value: Number(r.value) }));
+}
+
+export async function recordValuePoint(membershipId, value) {
+  if (!membershipId || value == null || isNaN(value)) return;
+  await supabase.from("value_history").insert({ membership_id: membershipId, value });
+}
+
 export async function recordSnapshot(membershipId, value) {
   if (!membershipId || value == null || isNaN(value)) return;
   const day = new Date().toISOString().slice(0, 10);

@@ -29,7 +29,7 @@ function resolve(tf, ageDays, mode) {
   }
 }
 
-export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null) {
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -46,9 +46,16 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
+  // RECORDED timeline (preferred): real value points logged ~every 15 min + deposit
+  // steps. Use them directly when there are enough in the window; otherwise fall back
+  // to the market reconstruction below (so new accounts still get a curve while points
+  // accrue). Deposits appear as real steps because they're in the recorded data.
+  const vhWin = (vh || []).filter((p) => p && p.value != null && p.t >= cutoff);
+  const useVH = vhWin.length >= 2;
+
   useEffect(() => {
     let alive = true;
-    if (tickers.length === 0) { setHist(null); return; }
+    if (useVH || tickers.length === 0) { setHist(null); return; }
     fetchHistories(tickers, range).then((hmap) => {
       if (!alive) return;
       const series = tickers.map((t) => {
@@ -74,7 +81,7 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
     }).catch(() => { if (alive) setHist(null); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, useVH]);
 
   const label = LABEL[tf] || "All time";
   const baseCap = startCash || totalValue || 1; // the game's ORIGINAL start cash ("10k")
@@ -86,7 +93,15 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
   let points;
-  if (hist && hist.length) {
+  let resForChart = res;
+  if (useVH) {
+    // REAL recorded timeline. Downsample to keep the SVG light on long windows.
+    let core = vhWin.map((p) => ({ t: p.t, c: p.value }));
+    if (core.length > 300) { const step = Math.ceil(core.length / 300); core = core.filter((_, i) => i % step === 0); }
+    const lead = includesOpen ? [{ t: accountStartT - 86400, c: baseCap }] : [];
+    points = [...lead, ...core, tail];
+    resForChart = windowDays <= 7 ? "15m" : "1d"; // time labels for short windows, dates for long
+  } else if (hist && hist.length) {
     let lead;
     if (includesOpen) {
       // flat at the starting capital from the day before open; hold flat through open
@@ -118,5 +133,5 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
     chg = points[points.length - 1].c - base;
     pct = base ? (chg / base) * 100 : 0;
   }
-  return { points, chg, pct, up: chg >= 0, label, resolution: res };
+  return { points, chg, pct, up: chg >= 0, label, resolution: resForChart };
 }

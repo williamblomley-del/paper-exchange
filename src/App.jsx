@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { C, DONUT } from "./theme.js";
 import { fmt, P, money, pct, currencyOf } from "./lib/format.js";
 import { MOCK_STOCKS, WATCH } from "./lib/mockData.js";
-import { supabase, configured, signOut, loadMemberships, createGame, joinGame, loadGameData, recordSnapshot, loadBoardRows, updateUsername, loadNotifications, markNotificationsRead, grantFunds, requestFunds, updateDepositConfig } from "./lib/supabase.js";
+import { supabase, configured, signOut, loadMemberships, createGame, joinGame, loadGameData, recordSnapshot, loadBoardRows, updateUsername, loadNotifications, markNotificationsRead, grantFunds, requestFunds, updateDepositConfig, loadValueHistory, recordValuePoint } from "./lib/supabase.js";
 import { fetchQuote, fetchQuotes, fetchPrices, searchSymbols, fetchLists } from "./lib/prices.js";
 import { PricesCtx } from "./lib/pricesContext.js";
 import GlobalStyles from "./components/GlobalStyles.jsx";
@@ -75,9 +75,12 @@ export default function App() {
   const [trades, setTrades] = useState([]); // eslint-disable-line no-unused-vars
   const [live, setLive] = useState({});
   const [history, setHistory] = useState([]); // [{day, value}]
+  const [vhistory, setVhistory] = useState([]); // [{t, value}] recorded value timeline
   const [lists, setLists] = useState({}); // real {gainers, losers, actives} from Yahoo
 
   const loadedUid = useRef(null); // which user we've already loaded (avoids reload on tab refocus)
+  const totalValueRef = useRef(0); // latest total value (for the value-timeline recorder)
+  const lastValRecRef = useRef(0); // last value_history write time (throttle to ~15 min)
   const mem = memberships.find((m) => m.id === currentMid) || null;
   const game = mem?.games || null;
   const username = mem?.username || session?.user?.user_metadata?.username || "You";
@@ -249,6 +252,17 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentMid]);
 
+  // Accurate value timeline: load recorded points on entry, then record the live total
+  // value ~every 15 min (the tick runs each minute; maybeRecordVal throttles the writes).
+  useEffect(() => {
+    if (phase !== "app" || !currentMid) return;
+    lastValRecRef.current = 0;
+    loadValueHistory(currentMid).then(setVhistory).catch(() => {});
+    const id = setInterval(() => maybeRecordVal(totalValueRef.current), 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, currentMid]);
+
   // Real market lists (gainers/losers/most active) once in the app.
   useEffect(() => {
     if (phase !== "app") return;
@@ -331,6 +345,18 @@ export default function App() {
   const startCash = Number(game?.start_cash) || 10000;
   const deposited = Number(mem?.deposited) || startCash;
   const totalPL = totalValue - deposited;
+  totalValueRef.current = totalValue;
+
+  // Record a real value point for the accurate timeline. Throttled to ~15 min unless
+  // forced (e.g. right after a trade, where the value just changed materially).
+  async function maybeRecordVal(v, force = false) {
+    if (!currentMid || v == null || isNaN(v)) return;
+    const ms = Date.now();
+    if (!force && ms - lastValRecRef.current < 14 * 60 * 1000) return;
+    lastValRecRef.current = ms;
+    await recordValuePoint(currentMid, v).catch(() => {});
+    setVhistory((h) => [...h, { t: Math.floor(ms / 1000), value: v }]);
+  }
   const allocation = useMemo(() => {
     const items = Object.entries(positions).map(([t, p], i) => ({
       ticker: t, name: MOCK_STOCKS[t]?.name ?? t,
@@ -418,6 +444,7 @@ export default function App() {
       Object.entries(newPositions).forEach(([t, p]) => { v += p.shares * priceOf(t); });
       recordSnapshot(mid, v).catch(() => {});
       setHistory((h) => [...h.filter((x) => x.day !== today), { day: today, value: v }]);
+      maybeRecordVal(v, true); // record a real value point right after the trade
       setMemberships((ms) => ms.map((m) => (m.id === mid ? { ...m, cash: newCash } : m)));
       setTrades((t) => [{ side, ticker: active, shares, price, value: cost, ts: Date.now() }, ...t].slice(0, 50));
       setTradeAmt("");
@@ -633,7 +660,7 @@ export default function App() {
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}
             positions={positions} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} cash={cash}
-            totalValue={totalValue} history={history} startCash={startCash} deposited={deposited} lists={lists} gameStart={mem?.created_at}
+            totalValue={totalValue} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} lists={lists} gameStart={mem?.created_at}
           />
         )}
 
@@ -642,7 +669,7 @@ export default function App() {
             totalValue={totalValue} totalPL={totalPL} cash={cash} positions={positions}
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
-            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} deposited={deposited} gameStart={mem?.created_at}
+            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} gameStart={mem?.created_at}
             onRequestMoney={handleRequest}
           />
         )}

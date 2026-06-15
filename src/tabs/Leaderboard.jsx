@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { C } from "../theme.js";
 import { P, pct, money } from "../lib/format.js";
 import { usePrices } from "../lib/pricesContext.js";
-import { loadSnapshots } from "../lib/supabase.js";
+import { loadSnapshots, loadValueHistory } from "../lib/supabase.js";
 import { usePortfolioPerf } from "../lib/usePortfolioPerf.js";
 import Panel from "../components/Panel.jsx";
 import Stat from "../components/Stat.jsx";
@@ -24,6 +24,7 @@ export default function Leaderboard({
 }) {
   const { priceOf, curOf, detailOf } = usePrices();
   const [snaps, setSnaps] = useState([]);
+  const [selVh, setSelVh] = useState([]); // selected player's recorded value timeline
   const [viewMember, setViewMember] = useState(null); // a player whose full portfolio we're viewing
   const [viewStock, setViewStock] = useState(null);   // optional stock to open in that view
   const [grantAmt, setGrantAmt] = useState("");       // creator: give money to selected player
@@ -34,9 +35,10 @@ export default function Leaderboard({
   // Load the selected player's real value history (needs game-scoped snap_read RLS).
   const selId = (board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0])?.id;
   useEffect(() => {
-    if (!selId) { setSnaps([]); return; }
+    if (!selId) { setSnaps([]); setSelVh([]); return; }
     let alive = true;
     loadSnapshots(selId).then((s) => { if (alive) setSnaps(s); }).catch(() => { if (alive) setSnaps([]); });
+    loadValueHistory(selId).then((v) => { if (alive) setSelVh(v); }).catch(() => { if (alive) setSelVh([]); });
     return () => { alive = false; };
   }, [selId]);
 
@@ -46,7 +48,7 @@ export default function Leaderboard({
   const selRow = board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0];
   const selMap = {};
   (selRow?.holdings || []).forEach((h) => { selMap[h.ticker] = { shares: h.shares, avgCost: h.avgCost }; });
-  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard", selRow?.deposited);
+  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard", selRow?.deposited, selVh);
 
   if (!game) {
     return <Panel pad={40}><div style={{ textAlign: "center", color: C.dim, fontSize: 14 }}>You're not in a game yet.</div></Panel>;
@@ -87,7 +89,7 @@ export default function Leaderboard({
           totalPL={m.value - (m.deposited ?? m.startCash ?? 0)} startCash={m.startCash ?? game?.start_cash ?? 0} deposited={m.deposited ?? m.startCash ?? 0}
           active={active} setActive={setActive} tf={tf} setTf={setTf}
           tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt} setTradeAmt={setTradeAmt}
-          trade={() => {}} history={snaps}
+          trade={() => {}} history={snaps} vhistory={selVh}
         />
       </div>
     );

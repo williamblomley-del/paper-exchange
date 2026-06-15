@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { C } from "../theme.js";
 import { P, pct } from "../lib/format.js";
-import { PERF_TFS } from "../lib/perf.js";
-import { usePortfolioPerf } from "../lib/usePortfolioPerf.js";
+import { PERF_TFS, buildPerf } from "../lib/perf.js";
+import { usePrices } from "../lib/pricesContext.js";
 import BigChart from "./BigChart.jsx";
 
 // Account summary for the top of the Market tab's left column. Renders BARE
 // (no card wrapper) so it sits inside the one connected white Market container.
-// The change stat + chart follow a timeframe toggle and a REAL market-following
-// portfolio curve (value = cash + Σ shares × price history) at stock-like resolution.
-export default function AccountCard({ totalValue, cash, positions, invested, history, gameStart }) {
+// The change stat + chart follow a timeframe toggle and the REAL stored snapshot
+// history (buildPerf) — same source as the leaderboard, so all views agree.
+export default function AccountCard({ totalValue, cash, positions, invested, history }) {
   const [perfTf, setPerfTf] = useState("1D");
+  const { priceOf, detailOf } = usePrices();
   const investedNow = totalValue - cash; // amount currently in holdings
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
+  // Real intraday day change: Σ shares × (price − prevClose), only when a real
+  // prevClose is present (live). Feeds buildPerf's 1D branch.
+  const dayChange = Object.entries(positions).reduce((s, [t, p]) => {
+    const d = detailOf(t);
+    return d.prevClose != null ? s + p.shares * (priceOf(t) - d.prevClose) : s;
+  }, 0);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = buildPerf(history, totalValue, dayChange, invested, perfTf);
 
   return (
     <div style={{ padding: "20px 20px 16px" }}>
@@ -35,7 +42,7 @@ export default function AccountCard({ totalValue, cash, positions, invested, his
         </div>
       </div>
 
-      <BigChart points={perfPoints} resolution={perfRes} height={70} blue bare />
+      <BigChart points={perfPoints} resolution="1d" height={70} blue bare />
       <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
         {PERF_TFS.map(([key]) => (
           <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 11px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>

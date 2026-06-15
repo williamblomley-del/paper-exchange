@@ -21,6 +21,7 @@ export default function StockDetail({
   tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, onBack,
 }) {
   const [order, setOrder] = useState(null);
+  const [amtFocus, setAmtFocus] = useState(false); // amount field focused (so the resting "0" clears)
   const [aboutFull, setAboutFull] = useState(false); // "See all" → full About takeover
   const [hover, setHover] = useState(null); // { value, label } from chart hover, or null
   useEffect(() => { setHover(null); setAboutFull(false); }, [active, tf]); // clear on switch
@@ -139,8 +140,8 @@ export default function StockDetail({
 
       {/* buy / sell */}
       <div style={{ display: "flex", gap: 12, padding: "26px 28px 22px" }}>
-        <button onClick={() => setOrder("sell")} className="trbtn" style={{ ...blueBtn, width: 168 }}>Sell</button>
-        <button onClick={() => setOrder("buy")} className="trbtn" style={{ ...blueBtn, width: 168 }}>Buy</button>
+        <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("sell"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Sell</button>
+        <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("buy"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Buy</button>
       </div>
 
       {/* trade popup (centered, like the search modal) — slider + quick % chips */}
@@ -170,10 +171,10 @@ export default function StockDetail({
                 ))}
               </div>
 
-              {/* big centered amount */}
+              {/* big centered amount — shows a resting "0" that clears when you click in */}
               <div style={{ textAlign: "center", marginBottom: 14 }}>
-                <input autoFocus value={tradeAmt} onChange={(e) => onAmt(e.target.value)} inputMode="decimal" placeholder="0"
-                  style={{ width: "100%", textAlign: "center", border: "none", outline: "none", fontSize: 38, fontWeight: 600, color: C.ink, background: "none", fontFamily: C.sans, letterSpacing: "-0.02em" }} />
+                <input value={amtFocus ? tradeAmt : (tradeAmt === "" ? "0" : tradeAmt)} onFocus={() => setAmtFocus(true)} onBlur={() => setAmtFocus(false)} onChange={(e) => onAmt(e.target.value)} inputMode="decimal"
+                  style={{ width: "100%", textAlign: "center", border: "none", outline: "none", fontSize: 38, fontWeight: 600, color: tradeAmt === "" && !amtFocus ? C.muted : C.ink, background: "none", fontFamily: C.sans, letterSpacing: "-0.02em" }} />
                 <div style={{ fontSize: 12.5, color: C.dim, marginTop: 2 }}>{tradeMode === "cash" ? `≈ ${fmt(shares, 4)} shares` : `≈ ${P(cost)}`}</div>
               </div>
 
@@ -181,12 +182,9 @@ export default function StockDetail({
               <input type="range" min={0} max={max || 1} step={tradeMode === "cash" ? 1 : 0.0001} value={Math.min(amt, max || 0)} onChange={(e) => onAmt(e.target.value)} disabled={max <= 0}
                 style={{ width: "100%", accentColor: C.blue, cursor: max > 0 ? "pointer" : "default" }} />
 
-              {/* quick % + max */}
-              <div style={{ display: "flex", gap: 8, margin: "14px 0 18px" }}>
-                {[0.25, 0.5, 0.75].map((f) => (
-                  <button key={f} onClick={() => setTradeAmt(fmtMax(max * f))} className="btn" style={{ flex: 1, padding: "8px 0", fontSize: 12.5, fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 9, background: C.card, color: C.dim }}>{f * 100}%</button>
-                ))}
-                <button onClick={fillMax} className="btn" style={{ flex: 1, padding: "8px 0", fontSize: 12.5, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 9, background: C.fill, color: C.ink }}>{isBuy ? "Max" : "All"}</button>
+              {/* max / sell-all */}
+              <div style={{ display: "flex", margin: "14px 0 18px" }}>
+                <button onClick={fillMax} className="btn" style={{ flex: 1, padding: "9px 0", fontSize: 12.5, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 9, background: C.fill, color: C.ink }}>{isBuy ? "Max" : "Sell all"}</button>
               </div>
 
               {/* summary */}

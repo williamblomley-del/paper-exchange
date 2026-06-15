@@ -28,30 +28,33 @@ export default function Logo({ ticker, size = 30, round = false, src = null }) {
     .filter(Boolean)
     .filter((u, i, a) => a.indexOf(u) === i); // dedupe (US tickers: full === base)
   const [idx, setIdx] = useState(0);
-  useEffect(() => { setIdx(0); }, [candidates[0], candidates.length]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { setIdx(0); setLoaded(false); }, [candidates[0], candidates.length]);
   const radius = round ? "50%" : size * 0.28;
   const url = candidates[idx];
-
-  if (url) {
-    return (
-      <img
-        src={url} alt={ticker} width={size} height={size} onError={() => setIdx((i) => i + 1)}
-        style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: `1px solid ${C.line}`, flexShrink: 0 }}
-      />
-    );
-  }
 
   const palette = {
     NVDA: "#76B900", AAPL: "#111", MSFT: "#00A4EF", GOOGL: "#4285F4", AMZN: "#FF9900",
     TSLA: "#E82127", AVGO: "#CC092F", TSM: "#D6001C", ORCL: "#F80000", SPY: "#1B5E9E",
   };
+
+  // The coloured tile renders INSTANTLY underneath; the real logo fades in over it
+  // the moment it loads (and on error we advance to the next source). So there's
+  // never a blank wait — you always see something immediately.
   return (
-    <div style={{
-      width: size, height: size, borderRadius: radius, background: palette[ticker] || "#888", color: "#fff",
-      flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-      fontWeight: 800, fontSize: size * 0.36, fontFamily: C.sans,
-    }}>
-      {ticker[0]}
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: radius, background: palette[ticker] || "#888", color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.36, fontFamily: C.sans,
+      }}>{ticker ? ticker[0] : "?"}</div>
+      {url && (
+        <img
+          src={url} alt={ticker} width={size} height={size}
+          onLoad={() => setLoaded(true)}
+          onError={() => { setLoaded(false); setIdx((i) => i + 1); }}
+          style={{ position: "absolute", inset: 0, width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: `1px solid ${C.line}`, opacity: loaded ? 1 : 0, transition: "opacity .15s" }}
+        />
+      )}
     </div>
   );
 }

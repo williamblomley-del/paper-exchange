@@ -8,12 +8,14 @@ import { fetchHistories } from "./prices.js";
 // window (a "what-if-held" view) — we don't store minute-by-minute account history.
 const LABEL = { "1D": "Last 24h", "1W": "Last week", "1M": "Last month", "1Y": "Last year", "MAX": "All time" };
 
-export function usePortfolioPerf(positions, cash, invested, totalValue, tf, history) {
+export function usePortfolioPerf(positions, cash, invested, totalValue, tf, history, startAt) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
-  // Don't reconstruct before the account existed — valuing today's shares at prices
+  // Don't reconstruct before the game existed — valuing today's shares at prices
   // from before you joined gives nonsense (e.g. NVDA years ago → fake +490%).
-  const accountStartT = history && history.length ? Math.floor(Date.parse(history[0].day) / 1000) : 0;
+  // Anchor to when the game/membership was created; fall back to the first snapshot.
+  const accountStartT = startAt ? Math.floor(Date.parse(startAt) / 1000)
+    : (history && history.length ? Math.floor(Date.parse(history[0].day) / 1000) : 0);
   const key = tickers.slice().sort().join(",") + "|" + tf + "|" + cash + "|" + accountStartT;
 
   useEffect(() => {

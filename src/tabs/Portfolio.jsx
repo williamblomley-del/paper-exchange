@@ -19,7 +19,7 @@ const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d", "MAX": "1mo" };
 // holding swaps to the shared StockDetail). Numbers are weight 500 (light).
 export default function Portfolio({
   totalValue, totalPL, cash, positions, allocation, setActive,
-  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested,
+  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested, gameStart,
 }) {
   const [selected, setSelected] = useState(null);
   const [allocBy, setAllocBy] = useState("Shares"); // Shares | Industry | Country
@@ -30,7 +30,7 @@ export default function Portfolio({
 
   // Performance graph: a REAL market-following portfolio curve (cash + Σ shares ×
   // each holding's price history) at stock-like resolution, with a relabeling change.
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
 
   // Holdings enriched + sorted by value (desc) for the right-pane table.
   const holdings = Object.entries(positions).map(([t, p]) => {

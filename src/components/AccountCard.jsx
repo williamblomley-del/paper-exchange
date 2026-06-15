@@ -11,10 +11,10 @@ const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d", "MAX": "1mo" };
 // (no card wrapper) so it sits inside the one connected white Market container.
 // The change stat + chart follow a timeframe toggle and a REAL market-following
 // portfolio curve (value = cash + Σ shares × price history) at stock-like resolution.
-export default function AccountCard({ totalValue, cash, positions, invested, history }) {
+export default function AccountCard({ totalValue, cash, positions, invested, history, gameStart }) {
   const [perfTf, setPerfTf] = useState("1D");
   const investedNow = totalValue - cash; // amount currently in holdings
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
 
   return (
     <div style={{ padding: "20px 20px 16px" }}>

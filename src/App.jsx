@@ -539,7 +539,7 @@ export default function App() {
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}
             positions={positions} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} cash={cash}
-            totalValue={totalValue} history={history} invested={invested} lists={lists}
+            totalValue={totalValue} history={history} invested={invested} lists={lists} gameStart={mem?.created_at}
           />
         )}
 
@@ -548,7 +548,7 @@ export default function App() {
             totalValue={totalValue} totalPL={totalPL} cash={cash} positions={positions}
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
-            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} invested={invested}
+            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} invested={invested} gameStart={mem?.created_at}
           />
         )}
 

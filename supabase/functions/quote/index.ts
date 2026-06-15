@@ -84,10 +84,11 @@ async function yahooLive(sym: string) {
   for (let i = closes.length - 1; i >= 0; i--) { if (closes[i] != null) { lastC = closes[i]; break; } }
   const price = lastC ?? meta.regularMarketPrice;
   if (price == null) return null;
-  const reg = meta.currentTradingPeriod?.regular;
-  const nowS = Math.floor(Date.now() / 1000);
-  const extended = reg && (nowS < reg.start || nowS > reg.end); // pre or post market
-  const prev = extended ? meta.regularMarketPrice : (meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice);
+  // Day change is always measured vs the PREVIOUS close (the standard "day change").
+  // Using the regular close as the baseline during extended hours broke non-US markets
+  // like the LSE (.L) — after the London close there's no post-market, so price ≈ regular
+  // close → ~0.00%. Vs previous close it's correct for US, London, and pre/post-market.
+  const prev = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
   const change = price - prev;
   return { price: price / div, prevClose: prev / div, change: change / div, changePct: prev ? (change / prev) * 100 : 0, currency: cur };
 }

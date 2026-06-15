@@ -38,16 +38,20 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   const [hover, setHover] = useState(null); // index of the hovered slice (pops out)
   const svgRef = useRef(null);
 
-  // sort, then roll only the SMALL slices (< 4% of the total) into "Other" so the
+  // sort, then roll only the SMALL slices (< 2% of the total) into "Other" so the
   // chart stays readable without an oversized "Other" wedge. A lone small slice
-  // keeps its own name (no point calling a single 3% holding "Other").
-  const sorted = [...items].sort((a, b) => b.value - a.value);
+  // keeps its own name. Cash is ALWAYS its own slice (never rolled in) unless it's 0.
+  const sorted = [...items].filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
   const total = sorted.reduce((s, i) => s + i.value, 0) || 1;
-  const big = sorted.filter((d) => d.value / total >= 0.04);
-  const small = sorted.filter((d) => d.value / total < 0.04);
+  const cashItem = sorted.find((i) => i.label === "Cash");
+  const rest = sorted.filter((i) => i.label !== "Cash");
+  const big = rest.filter((d) => d.value / total >= 0.02);
+  const small = rest.filter((d) => d.value / total < 0.02);
   let data = big;
   if (small.length === 1) data = [...big, small[0]];
   else if (small.length > 1) data = [...big, { label: "Other", value: small.reduce((s, x) => s + x.value, 0) }];
+  if (cashItem) data = [...data, cashItem]; // cash always visible
+  data = data.sort((a, b) => b.value - a.value);
   if (data.length === 0) data = sorted; // everything was tiny — show as-is
 
   // build slices with geometry

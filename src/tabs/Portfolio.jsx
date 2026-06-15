@@ -46,7 +46,9 @@ export default function Portfolio({
     }
     const key = allocBy === "Industry" ? "industry" : "country";
     const map = {};
-    holdings.forEach((h) => { const k = META[h.t]?.[key] || "Other"; map[k] = (map[k] || 0) + h.val; });
+    // Prefer curated META (the 10 mock tickers); fall back to LIVE industry/country
+    // (Finnhub profile2) so searched / foreign holdings aren't all lumped into "Other".
+    holdings.forEach((h) => { const k = META[h.t]?.[key] || detailOf(h.t)?.[key] || "Other"; map[k] = (map[k] || 0) + h.val; });
     map["Cash"] = (map["Cash"] || 0) + cash;
     return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
   }

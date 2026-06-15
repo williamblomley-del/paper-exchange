@@ -97,11 +97,10 @@ export default function Leaderboard({
           </div>
           {board.map((r, i) => {
             const isMe = r.id === meId;
-            const medals = ["🥇", "🥈", "🥉"];
             const on = sel.id === r.id;
             return (
               <div key={r.id} onClick={() => setSelUser(r.id)} className="wrow" style={{ display: "grid", gridTemplateColumns: "48px 1fr 1fr 1fr", gap: 8, padding: "13px 24px", alignItems: "center", cursor: "pointer", borderBottom: `1px solid ${C.lineSoft}`, background: on ? "rgba(70,160,255,0.06)" : isMe ? "rgba(184,116,26,0.05)" : "transparent" }}>
-                <span style={{ fontSize: i < 3 ? 18 : 13, color: C.muted, fontWeight: 700 }}>{i < 3 ? medals[i] : i + 1}</span>
+                <span style={{ fontSize: 14, color: i < 3 ? C.ink : C.muted, fontWeight: 700 }}>{i + 1}</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar name={r.username} size={30} />
                   <span style={{ fontWeight: isMe ? 800 : 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.username}</span>

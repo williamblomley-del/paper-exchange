@@ -67,6 +67,31 @@ async function yahoo(sym: string, range: string | null) {
   };
 }
 
+// Latest EXTENDED-HOURS price (pre/post-market) + correct day change. The normal
+// price field ignores pre/post-market; this reads the last 1-min bar (incl pre/post)
+// and picks the right baseline: vs the last regular close while in pre/post, vs
+// yesterday's close during regular hours.
+async function yahooLive(sym: string) {
+  const res = await yf(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1d&interval=1m&includePrePost=true`);
+  const r = res?.chart?.result?.[0];
+  if (!r?.meta) return null;
+  const meta = r.meta;
+  let cur = meta.currency || "USD";
+  const div = cur === "GBp" || cur === "GBX" ? 100 : 1;
+  if (div !== 1) cur = "GBP";
+  const closes = r.indicators?.quote?.[0]?.close || [];
+  let lastC: number | null = null;
+  for (let i = closes.length - 1; i >= 0; i--) { if (closes[i] != null) { lastC = closes[i]; break; } }
+  const price = lastC ?? meta.regularMarketPrice;
+  if (price == null) return null;
+  const reg = meta.currentTradingPeriod?.regular;
+  const nowS = Math.floor(Date.now() / 1000);
+  const extended = reg && (nowS < reg.start || nowS > reg.end); // pre or post market
+  const prev = extended ? meta.regularMarketPrice : (meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice);
+  const change = price - prev;
+  return { price: price / div, prevClose: prev / div, change: change / div, changePct: prev ? (change / prev) * 100 : 0, currency: cur };
+}
+
 // Resolve a typed query (e.g. "P911", "porsche") to a Yahoo symbol (e.g. P911.DE).
 async function yahooSearch(q: string): Promise<string | null> {
   const res = await yf(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=6&newsCount=0`);
@@ -123,15 +148,13 @@ serve(async (req) => {
       const out: Record<string, unknown> = {};
       await Promise.all(syms.map(async (raw: string) => {
         const sym = String(raw).toUpperCase();
-        const q = await fh(`quote?symbol=${sym}`);
-        if (q && q.c) {
-          out[sym] = { price: q.c, change: q.d, changePct: q.dp, prevClose: q.pc };
+        // Yahoo extended-hours first (so pre/post-market moves show); Finnhub fallback.
+        const lv = await yahooLive(sym);
+        if (lv && lv.price != null) {
+          out[sym] = { price: lv.price, change: lv.change, changePct: lv.changePct, prevClose: lv.prevClose };
         } else {
-          const y = await yahoo(sym, null);
-          if (y && y.price != null) {
-            const ch = y.price - (y.prevClose ?? y.price);
-            out[sym] = { price: y.price, change: ch, changePct: y.prevClose ? (ch / y.prevClose) * 100 : 0, prevClose: y.prevClose };
-          }
+          const q = await fh(`quote?symbol=${sym}`);
+          if (q && q.c) out[sym] = { price: q.c, change: q.d, changePct: q.dp, prevClose: q.pc };
         }
       }));
       return new Response(JSON.stringify({ quotes: out }), { headers: cors });
@@ -187,6 +210,14 @@ serve(async (req) => {
       }
       const change = y.price - (y.prevClose ?? y.price);
       snap = { price: y.price, change, changePct: y.prevClose ? (change / y.prevClose) * 100 : 0, open: y.open ?? y.prevClose, high: y.high, low: y.low, prevClose: y.prevClose, currency: y.currency, _yname: y.name, _yexch: y.exchange };
+    }
+
+    // Override headline price/change with EXTENDED-HOURS data (pre/post-market) so
+    // the detail matches what's actually trading now. Keeps Finnhub's OHLC/mktcap/PE.
+    const lv = await yahooLive(ySym);
+    if (lv && lv.price != null) {
+      snap.price = lv.price; snap.change = lv.change; snap.changePct = lv.changePct; snap.prevClose = lv.prevClose;
+      if (lv.currency) snap.currency = lv.currency;
     }
 
     // Logo: ONLY the exact listing's logo. We do NOT fall back to the base symbol

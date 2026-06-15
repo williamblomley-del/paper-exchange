@@ -109,7 +109,10 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
         <div style={{ position: "absolute", right: 4, top: `${yPct(avgCost)}%`, transform: "translateY(-50%)", background: C.fill, color: C.dim, fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 6, pointerEvents: "none" }}>Avg {money(avgCost)}</div>
       )}
       {ci != null && (
-        <div style={{ position: "absolute", top: 4, left: `${xPct(ci)}%`, transform: xPct(ci) > 70 ? "translateX(-105%)" : "translateX(8px)", background: C.ink, color: "#fff", padding: "5px 9px", borderRadius: 8, fontSize: 11.5, pointerEvents: "none", whiteSpace: "nowrap", boxShadow: C.sh }}>
+        // Anchor the tooltip to the side of the cursor that keeps it INSIDE the
+        // chart (flip past the midpoint), with an 8px gap, so it never bleeds
+        // into neighbouring sections' text/lines.
+        <div style={{ position: "absolute", top: 4, left: `${xPct(ci)}%`, transform: xPct(ci) > 50 ? "translateX(calc(-100% - 8px))" : "translateX(8px)", background: C.ink, color: "#fff", padding: "5px 9px", borderRadius: 8, fontSize: 11.5, pointerEvents: "none", whiteSpace: "nowrap", boxShadow: C.sh, zIndex: 2 }}>
           <div style={{ fontWeight: 700 }}>{money(vals[ci])}</div>
           <div style={{ opacity: 0.7, fontSize: 10.5 }}>{fmtTime(vpts[ci].t, resolution)}</div>
         </div>

@@ -1011,6 +1011,30 @@ ranks are numbers 1/2/3 (no emojis); chart crosshair no longer jumps during whee
 - Deposit "time of day" is Europe/London via pg_cron at */30 → fires within 30 min of the set
   time, not to the exact minute. Fine for a friends game; note if exactness wanted.
 
+### Milestone 5 — session 15: lockout fix, deposit-aware returns, ACCURATE recorded timeline
+- **Lockout fix**: the deployed frontend selected `games.deposit_time` before `game_economy.sql`
+  added it → loadMemberships errored → empty games → users dumped on Start/Join. Made
+  `loadMemberships` retry the select without `deposit_time` (resilient to a not-yet-run migration).
+  Demo code recorded in memory: **C515DE** ("Demo", owner = blomster).
+- **Deposit handling — two flips, landed here**: (1) first switched all returns to baseline on
+  `start_cash` (deposits count as growth, "simple"); (2) owner then wanted deposits NOT to count
+  as performance → returns now baseline on `deposited` (start cash + deposits) so a pure-deposit
+  account reads ~0%, BUT the graph still STARTS at the original 10k and shows deposits as the line
+  rising. `usePortfolioPerf` got a `deposited` arg: for views back to open, chg/pct = totalValue −
+  deposited (graph points still anchored at startCash). App totalPL + leaderboard ret on deposited;
+  startCash threaded for the graph anchor. Removed the old `invested` App state.
+- **ACCURATE recorded timeline (NEW `supabase/value_history.sql` — ⚠️ OWNER MUST RUN after
+  game_economy.sql)**: stop estimating — RECORD real value points (~every 15 min client-side,
+  forced after trades) + write a value STEP server-side at each deposit/grant time (so deposits are
+  clean jumps even when offline). `usePortfolioPerf` plots recorded points when ≥2 exist in the
+  window, else falls back to the reconstruction (new accounts fill in over time). Rivals' timelines
+  read via game-scoped RLS. `value_history` table + RLS; `apply_due_deposits`/`grant_funds` redefined
+  to write steps via `_last_value()`.
+  - ⚠️ Trade-off accepted: fine detail only builds GOING FORWARD; for an established account, long
+    timeframes (MAX) show a diagonal from 10k to the first recorded point until history accrues.
+- ⚠️ **OWNER ACTIONS: (1) `git push origin main`; (2) run `supabase/value_history.sql` (after
+  game_economy.sql). London Edge redeploy still optional/pending.**
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

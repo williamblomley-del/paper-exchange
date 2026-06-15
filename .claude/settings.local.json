@@ -19,7 +19,8 @@
       "Bash(git commit -q -m 'About: bordered card + full See-all takeover; search needs 2+ chars \\(single letter was noisy\\) *)",
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0\" \"https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=1d&interval=1m&includePrePost=true\" --max-time 15)",
       "Bash(python3 -c ' *)",
-      "Bash(git commit -q -m 'Edge Function: extended-hours \\(pre/post-market\\) prices for holdings + detail via yahooLive *)"
+      "Bash(git commit -q -m 'Edge Function: extended-hours \\(pre/post-market\\) prices for holdings + detail via yahooLive *)",
+      "Bash(git commit -q -m 'Edge Function: fetch profile/metric/quote/history/live in parallel \\(faster stock open\\) *)"
     ]
   }
 }

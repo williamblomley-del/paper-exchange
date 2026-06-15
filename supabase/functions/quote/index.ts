@@ -185,13 +185,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ price: cached.price, name: cached.name, logo: cached.logo, currency: "USD", cached: true }), { headers: cors });
     }
 
-    // profile + metric (logo / mkt cap / P-E / industry) — best-effort, US-centric
-    const p = (await fh(`stock/profile2?symbol=${sym}`)) || {};
-    const m = (await fh(`stock/metric?symbol=${sym}&metric=all`)) || {};
-    const q = await fh(`quote?symbol=${sym}`);
+    // Fire all the independent data calls IN PARALLEL (was sequential → slow).
+    // For US tickers ySym = sym, so the Yahoo history + live can run alongside the
+    // Finnhub calls; non-US (rare) falls back to a resolve-then-fetch path below.
+    let ySym = sym; // symbol used for Yahoo history (may be resolved)
+    const [p, m, q, lvSym, yresSym] = await Promise.all([
+      fh(`stock/profile2?symbol=${sym}`).then((x) => x || {}),
+      fh(`stock/metric?symbol=${sym}&metric=all`).then((x) => x || {}),
+      fh(`quote?symbol=${sym}`),
+      yahooLive(sym),
+      wantHistory ? yahoo(sym, range) : Promise.resolve(null),
+    ]);
 
     let snap: Record<string, number | string | null>;
-    let ySym = sym; // symbol used for Yahoo history (may be resolved)
+    let lv = lvSym;
+    let yres = yresSym;
     if (q && q.c && q.c !== 0) {
       // US / Finnhub-covered listing (quoted in its native currency, usually USD)
       let cur = p.currency || "USD";
@@ -199,7 +207,7 @@ serve(async (req) => {
       if (div !== 1) cur = "GBP";
       snap = { price: q.c / div, change: q.d / div, changePct: q.dp, open: q.o / div, high: q.h / div, low: q.l / div, prevClose: q.pc / div, currency: cur };
     } else {
-      // non-US: try Yahoo directly, then a Yahoo SEARCH (so "P911" → P911.DE etc.)
+      // non-US: resolve via Yahoo (direct, then SEARCH) and re-fetch for that symbol.
       let y = await yahoo(sym, null);
       if (!y || y.price == null) {
         const resolved = await yahooSearch(sym);
@@ -210,21 +218,17 @@ serve(async (req) => {
       }
       const change = y.price - (y.prevClose ?? y.price);
       snap = { price: y.price, change, changePct: y.prevClose ? (change / y.prevClose) * 100 : 0, open: y.open ?? y.prevClose, high: y.high, low: y.low, prevClose: y.prevClose, currency: y.currency, _yname: y.name, _yexch: y.exchange };
+      // the parallel lv/yres were for `sym`; refetch for the resolved symbol
+      [lv, yres] = await Promise.all([yahooLive(ySym), wantHistory ? yahoo(ySym, range) : Promise.resolve(null)]);
     }
 
-    // Override headline price/change with EXTENDED-HOURS data (pre/post-market) so
-    // the detail matches what's actually trading now. Keeps Finnhub's OHLC/mktcap/PE.
-    const lv = await yahooLive(ySym);
+    // Override headline price/change with EXTENDED-HOURS data (pre/post-market).
     if (lv && lv.price != null) {
       snap.price = lv.price; snap.change = lv.change; snap.changePct = lv.changePct; snap.prevClose = lv.prevClose;
       if (lv.currency) snap.currency = lv.currency;
     }
 
-    // Logo: ONLY the exact listing's logo. We do NOT fall back to the base symbol
-    // for a suffixed ticker — "RR" is Richtech but "RR.L" is Rolls-Royce, so the
-    // base would be the WRONG company. (The frontend tries FMP by full ticker.)
     const logo = p.logo || null;
-    const yres = wantHistory ? await yahoo(ySym, range) : null;
     const met = m?.metric || {};
 
     const out: Record<string, unknown> = {

@@ -914,6 +914,21 @@ deposits via a **scheduled server job** (pg_cron).
   stock detail (selecting sets global `active` → app fetches its price/history).
 - **Logo cached-image fix** (prior session) — logos no longer vanish for cached/leaderboard items.
 
+### Milestone 5 — session 11: UI polish + age-adaptive perf resolution (build ✓)
+- **Leaderboard perf chart `bare`** (no y-axis). **Nav**: search pill says just "Search", taller +
+  narrower (width 300, padding 12px); **bell is now an SVG** (line-icon like the nav tabs, not 🔔).
+- **White strip removed** on Market/Portfolio: content wrapper bottom padding → 0, grids now
+  `height: calc(100vh - 84px)` so columns fill to the viewport bottom (was 124px → left a gap).
+- **Perf chart resolution adapts to ACCOUNT AGE** (`usePortfolioPerf` `picked`): "All"/MAX uses
+  ~30-min under a week (fetches "1W" feed), hourly under a month ("1M"), daily under a year ("1Y"),
+  then weekly ("MAX"). Hook now RETURNS `resolution`; AccountCard/Portfolio pass it to BigChart
+  (removed their local RES maps). No redeploy (reuses existing feeds).
+- **ETFs in search**: already supported (function filters EQUITY|ETF) — confirmed, no change.
+- ⚠️ **OPEN QUESTION for owner**: Market/Portfolio performance is a RECONSTRUCTION (smooth but
+  approximate); the Leaderboard one is snapshot-based (exact but daily). Owner may want to switch
+  the own-portfolio perf to snapshot-based (exact-but-coarse) — undecided. `usePortfolioPerf` vs
+  `buildPerf` (perf.js, still present).
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

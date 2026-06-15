@@ -67,7 +67,7 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   // de-overlap labels per side
   ["R", "L"].forEach((side) => {
     const grp = slices.filter((s) => (s.right ? "R" : "L") === side).sort((p, q) => p.ay - q.ay);
-    const ys = spread(grp.map((s) => s.ay), 30, 16, H - 16);
+    const ys = spread(grp.map((s) => s.ay), 38, 14, H - 14); // gap fits 2-line labels + hover pop-out
     grp.forEach((s, i) => { s.ly = ys[i]; });
   });
 

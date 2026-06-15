@@ -174,9 +174,15 @@ export default function App() {
   useEffect(() => {
     if (phase !== "app") return;
     const id = setInterval(() => {
+      // Lightweight tick: one cheap (server-cached) bulk price pull, MERGED per
+      // ticker so we keep each holding's prevClose (a daily value fetched on load).
+      // No per-holding history refetch here — that was heavy and caused jank.
       const tickers = Array.from(new Set([...WATCH, ...Object.keys(positions)]));
-      fetchPrices(tickers).then((map) => setLive((prev) => ({ ...prev, ...map }))).catch(() => {});
-      Object.keys(positions).forEach((t) => fetchQuote(t, "1D").then((d) => setLive((prev) => ({ ...prev, [t]: { ...prev[t], ...d } }))).catch(() => {}));
+      fetchPrices(tickers).then((map) => setLive((prev) => {
+        const n = { ...prev };
+        for (const k in map) n[k] = { ...prev[k], ...map[k] };
+        return n;
+      })).catch(() => {});
       if (active) fetchQuote(active, tf).then((d) => setLive((prev) => ({ ...prev, [active]: d }))).catch(() => {});
     }, 60000);
     return () => clearInterval(id);

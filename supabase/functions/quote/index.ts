@@ -39,7 +39,7 @@ function normExchange(s: string | null | undefined): string | null {
 }
 
 const YF: Record<string, [string, string]> = {
-  "1D": ["1d", "5m"], "1W": ["5d", "30m"], "1M": ["1mo", "60m"],
+  "1D": ["2d", "5m"], "1W": ["5d", "30m"], "1M": ["1mo", "60m"],
   "3M": ["3mo", "1d"], "6M": ["6mo", "1d"], "1Y": ["1y", "1d"], "MAX": ["max", "1wk"],
 };
 

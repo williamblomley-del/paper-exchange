@@ -17,7 +17,7 @@ import AssetHeatmap from "../components/AssetHeatmap.jsx";
 // holding swaps to the shared StockDetail). Numbers are weight 500 (light).
 export default function Portfolio({
   totalValue, totalPL, cash, positions, allocation, setActive,
-  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested, gameStart,
+  tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, startCash, gameStart,
   readOnly = false, initialStock = null, onRequestMoney,
 }) {
   const [selected, setSelected] = useState(initialStock);
@@ -27,13 +27,13 @@ export default function Portfolio({
   const [reqAmt, setReqAmt] = useState("");
   const [reqNote, setReqNote] = useState("");
   const { priceOf, curOf, detailOf } = usePrices();
-  const totalRetPct = (totalPL / (invested || 1)) * 100;
+  const totalRetPct = (totalPL / (startCash || 1)) * 100;
   function openStock(t) { setActive(t); setSelected(t); }
 
   // Performance graph: a REAL market-following portfolio curve (cash + Σ shares ×
   // each holding's price history) at the per-timeframe resolution (1D = 10-min,
   // 1W = hourly, 1M/1Y/All = daily), with a relabeling change.
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, startCash, totalValue, perfTf, history, gameStart);
 
   // Holdings enriched + sorted by value (desc) for the right-pane table.
   const holdings = Object.entries(positions).map(([t, p]) => {

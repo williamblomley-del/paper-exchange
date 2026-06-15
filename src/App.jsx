@@ -71,7 +71,6 @@ export default function App() {
 
   // account data (per current membership)
   const [cash, setCash] = useState(0);
-  const [invested, setInvested] = useState(0); // net capital in (start cash + deposits)
   const [positions, setPositions] = useState({});
   const [trades, setTrades] = useState([]); // eslint-disable-line no-unused-vars
   const [live, setLive] = useState({});
@@ -95,7 +94,7 @@ export default function App() {
       const mems = await loadMemberships(session.user.id);
       setMemberships(mems);
       const m = mems.find((x) => x.id === currentMid);
-      if (m) { setCash(Number(m.cash)); setInvested(Number(m.deposited)); }
+      if (m) { setCash(Number(m.cash)); }
       if (tab === "board") loadBoard();
     }
   }
@@ -145,7 +144,6 @@ export default function App() {
     try { localStorage.setItem("pe_current_game", m.id); } catch { /* ignore */ }
     setPhase("loading");
     setCash(Number(m.cash));
-    setInvested(Number(m.deposited));
     const { positions: pos, trades: tr, snapshots } = await loadGameData(m.id);
     const map = {};
     pos.forEach((p) => { map[p.ticker] = { shares: Number(p.shares), avgCost: Number(p.avg_cost) }; });
@@ -299,13 +297,15 @@ export default function App() {
     const priceMap = await fetchPrices([...tickers]).catch(() => ({}));
     setLive((prev) => ({ ...prev, ...priceMap }));
     const px = (t) => priceMap[t]?.price ?? live[t]?.price ?? MOCK_STOCKS[t]?.price ?? null;
+    // Returns are measured vs the game's ORIGINAL start cash (deposits count as
+    // balance growth — the "simple" model), shared by everyone in the game.
+    const sc = Number(game?.start_cash) || 10000;
     const ranked = rows.map((r) => {
       let v = Number(r.cash);
       (r.positions || []).forEach((x) => { v += Number(x.shares) * (px(x.ticker) ?? Number(x.avg_cost)); });
-      const inv = Number(r.deposited) || 1;
       return {
-        id: r.id, username: r.username, value: v, ret: ((v - inv) / inv) * 100,
-        cash: Number(r.cash), deposited: inv,
+        id: r.id, username: r.username, value: v, ret: ((v - sc) / sc) * 100,
+        cash: Number(r.cash), deposited: Number(r.deposited) || sc, startCash: sc,
         holdings: (r.positions || []).map((x) => ({ ticker: x.ticker, shares: Number(x.shares), avgCost: Number(x.avg_cost) })),
       };
     }).sort((a, b) => b.value - a.value);
@@ -324,7 +324,10 @@ export default function App() {
     return v;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cash, positions, live]);
-  const totalPL = totalValue - invested;
+  // Performance is measured vs the game's ORIGINAL start cash ("10k"); recurring
+  // deposits count as balance growth (the "simple" model), not excluded as capital.
+  const startCash = Number(game?.start_cash) || 10000;
+  const totalPL = totalValue - startCash;
   const allocation = useMemo(() => {
     const items = Object.entries(positions).map(([t, p], i) => ({
       ticker: t, name: MOCK_STOCKS[t]?.name ?? t,
@@ -627,7 +630,7 @@ export default function App() {
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}
             positions={positions} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} cash={cash}
-            totalValue={totalValue} history={history} invested={invested} lists={lists} gameStart={mem?.created_at}
+            totalValue={totalValue} history={history} startCash={startCash} lists={lists} gameStart={mem?.created_at}
           />
         )}
 
@@ -636,7 +639,7 @@ export default function App() {
             totalValue={totalValue} totalPL={totalPL} cash={cash} positions={positions}
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
-            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} invested={invested} gameStart={mem?.created_at}
+            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} gameStart={mem?.created_at}
             onRequestMoney={handleRequest}
           />
         )}

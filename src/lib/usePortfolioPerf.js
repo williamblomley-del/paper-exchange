@@ -29,7 +29,7 @@ function resolve(tf, ageDays, mode) {
   }
 }
 
-export function usePortfolioPerf(positions, cash, invested, totalValue, tf, history, startAt, mode = "own") {
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own") {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -77,11 +77,12 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   }, [key]);
 
   const label = LABEL[tf] || "All time";
-  const baseCap = invested || totalValue || 1; // starting capital (start cash + deposits)
-  const tail = { t: nowS, c: totalValue };     // ends exactly on the live total value
+  const baseCap = startCash || totalValue || 1; // the game's ORIGINAL start cash ("10k")
+  const tail = { t: nowS, c: totalValue };      // ends exactly on the live total value
   // Does this view reach back to when the account opened? If so, every account begins
-  // at its STARTING CAPITAL ("10k") — anchor the curve there with a flat "day before
-  // you opened" segment, then let it move once shares are actually bought.
+  // at its ORIGINAL START CASH ("10k") — anchor the curve there with a flat "day before
+  // you opened" segment. Recurring deposits then show up as the line stepping up over
+  // time (they're part of your balance growth — the "simple" model).
   const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
   let points;

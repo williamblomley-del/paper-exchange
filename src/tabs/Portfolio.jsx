@@ -12,8 +12,6 @@ import BigChart from "../components/BigChart.jsx";
 import StockDetail from "../components/StockDetail.jsx";
 import AssetHeatmap from "../components/AssetHeatmap.jsx";
 
-const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d", "MAX": "1mo" };
-
 // PORTFOLIO TAB — narrow LEFT (overview + performance + compact holdings) | grey
 // divider | wide RIGHT (Allocation + a sorted holdings table by default; a clicked
 // holding swaps to the shared StockDetail). Numbers are weight 500 (light).
@@ -31,7 +29,7 @@ export default function Portfolio({
 
   // Performance graph: a REAL market-following portfolio curve (cash + Σ shares ×
   // each holding's price history) at stock-like resolution, with a relabeling change.
-  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
+  const { points: perfPoints, chg: perfChg, pct: perfPct, up: perfUp, label: perfLabel, resolution: perfRes } = usePortfolioPerf(positions, cash, invested, totalValue, perfTf, history, gameStart);
 
   // Holdings enriched + sorted by value (desc) for the right-pane table.
   const holdings = Object.entries(positions).map(([t, p]) => {
@@ -82,7 +80,7 @@ export default function Portfolio({
               <span style={{ fontWeight: 700, fontSize: 13.5 }}>Performance</span>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: perfUp ? C.green : C.red }}>{perfUp ? "↗" : "↘"} {P(Math.abs(perfChg))} ({pct(perfPct)}) <span style={{ color: C.dim, fontWeight: 500 }}>{perfLabel}</span></span>
             </div>
-            <BigChart points={perfPoints} resolution={RES[perfTf]} height={110} blue bare />
+            <BigChart points={perfPoints} resolution={perfRes} height={110} blue bare />
             <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 8 }}>
               {PERF_TFS.map(([key, label]) => (
                 <button key={key} onClick={() => setPerfTf(key)} className="tfbtn" style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 8, background: perfTf === key ? C.fill : "transparent", color: perfTf === key ? C.ink : C.dim }}>{key === "MAX" ? "All" : key}</button>

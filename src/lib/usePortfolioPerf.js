@@ -16,12 +16,24 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   // Anchor to when the game/membership was created; fall back to the first snapshot.
   const accountStartT = startAt ? Math.floor(Date.parse(startAt) / 1000)
     : (history && history.length ? Math.floor(Date.parse(history[0].day) / 1000) : 0);
-  const key = tickers.slice().sort().join(",") + "|" + tf + "|" + cash + "|" + accountStartT;
+
+  // Resolution adapts to ACCOUNT AGE so a young account isn't drawn with coarse
+  // weekly/daily points. "All" (MAX): ~30-min under a week, hourly under a month,
+  // daily under a year, then weekly. Other timeframes keep their natural feed.
+  const ageDays = accountStartT ? (Math.floor(Date.now() / 1000) - accountStartT) / 86400 : 9999;
+  const picked = (() => {
+    if (tf !== "MAX") return { range: tf, res: ({ "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d" })[tf] || "1d" };
+    if (ageDays <= 7) return { range: "1W", res: "15m" };   // 5d feed at 30-min bars
+    if (ageDays <= 31) return { range: "1M", res: "1h" };   // ~1mo at hourly
+    if (ageDays <= 366) return { range: "1Y", res: "1d" };  // daily
+    return { range: "MAX", res: "1d" };                      // weekly
+  })();
+  const key = tickers.slice().sort().join(",") + "|" + picked.range + "|" + cash + "|" + accountStartT;
 
   useEffect(() => {
     let alive = true;
     if (tickers.length === 0) { setHist(null); return; }
-    fetchHistories(tickers, tf).then((hmap) => {
+    fetchHistories(tickers, picked.range).then((hmap) => {
       if (!alive) return;
       const series = tickers.map((t) => ({ shares: positions[t].shares, h: (hmap[t] || []).filter((p) => p && p.c != null && p.t >= accountStartT) }));
       const tsSet = new Set();
@@ -64,5 +76,5 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   const base = points[0].c;
   const chg = points[points.length - 1].c - base;
   const pct = base ? (chg / base) * 100 : 0;
-  return { points, chg, pct, up: chg >= 0, label };
+  return { points, chg, pct, up: chg >= 0, label, resolution: picked.res };
 }

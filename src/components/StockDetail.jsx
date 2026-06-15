@@ -137,40 +137,71 @@ export default function StockDetail({
         <div style={{ fontSize: 14.5, fontWeight: 600, color: dispUp ? C.green : C.red, marginTop: 6 }}>{dispUp ? "↗" : "↘"} {fmt(Math.abs(dispChg))} ({pct(dispChgP)}) {dispLabel}</div>
       </div>
 
-      {/* buy / sell — dropped down for breathing room */}
+      {/* buy / sell */}
       <div style={{ display: "flex", gap: 12, padding: "26px 28px 22px" }}>
-        <button onClick={() => setOrder("sell")} className="trbtn" style={{ ...blueBtn, width: 168, ...(order === "sell" ? { boxShadow: "0 4px 16px rgba(70,160,255,0.35)" } : {}) }}>Sell</button>
-        <button onClick={() => setOrder("buy")} className="trbtn" style={{ ...blueBtn, width: 168, ...(order === "buy" ? { boxShadow: "0 4px 16px rgba(70,160,255,0.35)" } : {}) }}>Buy</button>
+        <button onClick={() => setOrder("sell")} className="trbtn" style={{ ...blueBtn, width: 168 }}>Sell</button>
+        <button onClick={() => setOrder("buy")} className="trbtn" style={{ ...blueBtn, width: 168 }}>Buy</button>
       </div>
 
-      {/* order summary */}
-      {order && (
-        <div style={{ margin: "0 28px 22px", border: `1px solid ${C.line}`, borderRadius: 12, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>{order === "buy" ? "Buy" : "Sell"} {active}</span>
-            <button onClick={() => setOrder(null)} aria-label="Close" style={{ border: "none", background: "none", color: C.dim, fontSize: 18, lineHeight: 1 }}>✕</button>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <div style={{ display: "flex", border: `1px solid ${C.line}`, borderRadius: 9, padding: 3 }}>
-              {[["cash", "P£"], ["shares", "Shares"]].map(([k, l]) => (
-                <button key={k} onClick={() => setTradeMode(k)} style={{ padding: "6px 13px", fontSize: 12.5, fontWeight: 600, border: "none", borderRadius: 7, background: tradeMode === k ? C.ink : "transparent", color: tradeMode === k ? "#fff" : C.dim }}>{l}</button>
-              ))}
+      {/* trade popup (centered, like the search modal) — slider + quick % chips */}
+      {order && (() => {
+        const isBuy = order === "buy";
+        const max = maxAmt();
+        const amt = parseFloat(tradeAmt) || 0;
+        const shares = tradeMode === "cash" ? (stock.price ? amt / stock.price : 0) : amt;
+        const cost = shares * stock.price;
+        return (
+          <div onClick={() => setOrder(null)} style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(13,17,23,0.4)", display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: "11vh" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "min(430px,94vw)", background: C.card, borderRadius: 20, boxShadow: "0 24px 64px rgba(13,17,23,0.3)", padding: "22px 24px 24px" }}>
+              {/* header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <Logo ticker={active} size={38} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, color: C.dim }}>{active}{stock.exchange ? ` · ${stock.exchange}` : ""}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>{isBuy ? "Buy" : "Sell"} · {money(stock.price, cur)}</div>
+                </div>
+                <button onClick={() => setOrder(null)} aria-label="Close" style={{ border: "none", background: C.fill, width: 30, height: 30, borderRadius: 8, color: C.dim, fontSize: 15, cursor: "pointer" }}>✕</button>
+              </div>
+
+              {/* mode segmented */}
+              <div style={{ display: "flex", background: C.fill, borderRadius: 10, padding: 3, marginBottom: 18 }}>
+                {[["cash", "Amount (P£)"], ["shares", "Shares"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setTradeMode(k)} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 8, background: tradeMode === k ? C.card : "transparent", color: tradeMode === k ? C.ink : C.dim, boxShadow: tradeMode === k ? C.sh : "none" }}>{l}</button>
+                ))}
+              </div>
+
+              {/* big centered amount */}
+              <div style={{ textAlign: "center", marginBottom: 14 }}>
+                <input autoFocus value={tradeAmt} onChange={(e) => onAmt(e.target.value)} inputMode="decimal" placeholder="0"
+                  style={{ width: "100%", textAlign: "center", border: "none", outline: "none", fontSize: 38, fontWeight: 600, color: C.ink, background: "none", fontFamily: C.sans, letterSpacing: "-0.02em" }} />
+                <div style={{ fontSize: 12.5, color: C.dim, marginTop: 2 }}>{tradeMode === "cash" ? `≈ ${fmt(shares, 4)} shares` : `≈ ${P(cost)}`}</div>
+              </div>
+
+              {/* slider */}
+              <input type="range" min={0} max={max || 1} step={tradeMode === "cash" ? 1 : 0.0001} value={Math.min(amt, max || 0)} onChange={(e) => onAmt(e.target.value)} disabled={max <= 0}
+                style={{ width: "100%", accentColor: C.blue, cursor: max > 0 ? "pointer" : "default" }} />
+
+              {/* quick % + max */}
+              <div style={{ display: "flex", gap: 8, margin: "14px 0 18px" }}>
+                {[0.25, 0.5, 0.75].map((f) => (
+                  <button key={f} onClick={() => setTradeAmt(fmtMax(max * f))} className="btn" style={{ flex: 1, padding: "8px 0", fontSize: 12.5, fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 9, background: C.card, color: C.dim }}>{f * 100}%</button>
+                ))}
+                <button onClick={fillMax} className="btn" style={{ flex: 1, padding: "8px 0", fontSize: 12.5, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 9, background: C.fill, color: C.ink }}>{isBuy ? "Max" : "All"}</button>
+              </div>
+
+              {/* summary */}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.dim, marginBottom: 6 }}>
+                <span>Estimated {isBuy ? "cost" : "proceeds"}</span><span style={{ fontWeight: 600, color: C.ink }}>{P(cost)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.dim, marginBottom: 18 }}>
+                <span>{isBuy ? "Buying power" : "You hold"}</span><span style={{ fontWeight: 600, color: C.ink }}>{isBuy ? P(cash) : `${fmt(pos ? pos.shares : 0, 4)} ${active}`}</span>
+              </div>
+
+              <button onClick={confirm} disabled={!(amt > 0)} className="trbtn" style={{ ...blueBtn, width: "100%", opacity: amt > 0 ? 1 : 0.5 }}>Confirm {isBuy ? "Buy" : "Sell"}</button>
             </div>
-            <input autoFocus value={tradeAmt} onChange={(e) => onAmt(e.target.value)} placeholder={tradeMode === "cash" ? "Amount, e.g. 500" : "Shares, e.g. 2.5"} inputMode="decimal" className="pi" style={{ flex: 1, minWidth: 70, padding: "10px 13px", fontSize: 15, background: C.card, border: `1px solid ${C.line}`, borderRadius: 9 }} />
-            <button onClick={fillMax} className="btn" style={{ flexShrink: 0, padding: "10px 14px", fontSize: 12.5, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 9, background: C.fill, color: C.ink }}>{order === "sell" ? "Sell all" : "Max"}</button>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: C.dim, marginBottom: 4 }}>
-            <span>Estimated {order === "buy" ? "cost" : "proceeds"}</span>
-            <span style={{ fontWeight: 600, color: C.ink }}>{tradeMode === "cash" ? P(parseFloat(tradeAmt || 0)) : P(parseFloat(tradeAmt || 0) * stock.price)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: C.dim, marginBottom: 14 }}>
-            <span>{tradeMode === "cash" ? "Shares" : "Amount"}</span>
-            <span style={{ fontWeight: 600, color: C.ink }}>{tradeMode === "cash" ? `${fmt(parseFloat(tradeAmt || 0) / stock.price, 4)}` : P(parseFloat(tradeAmt || 0) * stock.price)}</span>
-          </div>
-          <button onClick={confirm} className="trbtn" style={{ ...blueBtn, width: "100%" }}>Confirm {order === "buy" ? "Buy" : "Sell"}</button>
-          <div style={{ textAlign: "center", fontSize: 12, color: C.dim, marginTop: 10 }}>Buying Power <b style={{ color: C.ink }}>{P(cash)}</b></div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* chart */}
       <div style={{ padding: "0 28px" }}>

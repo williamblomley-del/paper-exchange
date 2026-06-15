@@ -73,6 +73,7 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
     const raw = (e.clientX - r.left) / r.width;
     const f = Math.max(0, Math.min(1, (raw - px / W) / ((W - padR) / W - px / W)));
     const idx = Math.round(f * denom);
+    if (idx === hov) return; // still on the same data point → skip the re-render (smoother)
     setHov(idx);
     // Report the hovered point so the parent headline can track it (T212 style).
     if (onHover) { const ii = Math.max(0, Math.min(m - 1, idx)); onHover({ value: vpts[ii].c, label: fmtTime(vpts[ii].t, resolution) }); }

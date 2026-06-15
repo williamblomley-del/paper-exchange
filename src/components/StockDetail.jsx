@@ -18,7 +18,7 @@ function fmtCap(m) {
 // Shared stock-detail view (Market right side + Portfolio right side on click).
 export default function StockDetail({
   active, stock, tf, setTf, positions,
-  tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, onBack,
+  tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, onBack, readOnly = false,
 }) {
   const [order, setOrder] = useState(null);
   const [amtFocus, setAmtFocus] = useState(false); // amount field focused (so the resting "0" clears)
@@ -143,14 +143,16 @@ export default function StockDetail({
         <div style={{ fontSize: 14.5, fontWeight: 600, color: dispUp ? C.green : C.red, marginTop: 6 }}>{dispUp ? "↗" : "↘"} {fmt(Math.abs(dispChg))} ({pct(dispChgP)}) {dispLabel}</div>
       </div>
 
-      {/* buy / sell */}
-      <div style={{ display: "flex", gap: 12, padding: "26px 28px 22px" }}>
-        <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("sell"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Sell</button>
-        <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("buy"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Buy</button>
-      </div>
+      {/* buy / sell — hidden when viewing someone else's portfolio (read-only) */}
+      {!readOnly && (
+        <div style={{ display: "flex", gap: 12, padding: "26px 28px 22px" }}>
+          <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("sell"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Sell</button>
+          <button onClick={() => { setTradeAmt(""); setAmtFocus(false); setOrder("buy"); }} className="trbtn" style={{ ...blueBtn, width: 168 }}>Buy</button>
+        </div>
+      )}
 
       {/* trade popup (centered, like the search modal) — slider + quick % chips */}
-      {order && (() => {
+      {!readOnly && order && (() => {
         const isBuy = order === "buy";
         const max = maxAmt();
         const amt = parseFloat(tradeAmt) || 0;

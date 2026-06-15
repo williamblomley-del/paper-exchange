@@ -903,6 +903,17 @@ deposits via a **scheduled server job** (pg_cron).
 - **Portfolio holdings list now shows TODAY'S % change** (chgOf), not P/L-vs-cost (which is ~0 right
   after buying). Right-pane table still shows return vs cost.
 
+### Milestone 5 — session 10: clickable leaderboard → rival portfolio (build ✓)
+- **Leaderboard → "Show full portfolio"** + **clicking a rival's holding** now opens that player's
+  portfolio READ-ONLY, reusing `Portfolio.jsx` with a new `readOnly` + `initialStock` prop. Clicking
+  a holding opens it with that stock's `StockDetail` on the right. Back button returns to the board.
+- **`StockDetail` `readOnly`** hides the Buy/Sell buttons + trade popup. **`Portfolio` `readOnly`**
+  passes it through; `initialStock` pre-selects a stock. Rival's positions→map, cash, value,
+  deposited fed in; perf uses the rival's snapshots (loaded for the chart) to bound the curve.
+- App passes active/setActive/tf/setTf/trade* to Leaderboard so the rival view can fetch + show
+  stock detail (selecting sets global `active` → app fetches its price/history).
+- **Logo cached-image fix** (prior session) — logos no longer vanish for cached/leaderboard items.
+
 ⏳ OPEN (next session):
 - **Free Finnhub WEBSOCKET for true real-time ticking** (owner wants this eventually) — Finnhub
   offers a free WS for US trades (`wss://ws.finnhub.io?token=`). NOTE: that needs the key client-side

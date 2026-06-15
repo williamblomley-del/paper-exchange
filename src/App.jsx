@@ -563,7 +563,11 @@ export default function App() {
         )}
 
         {tab === "board" && (
-          <Leaderboard board={board} meId={currentMid} game={game} selUser={selUser} setSelUser={setSelUser} />
+          <Leaderboard
+            board={board} meId={currentMid} game={game} selUser={selUser} setSelUser={setSelUser}
+            active={active} setActive={setActive} tf={tf} setTf={setTf}
+            tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt} setTradeAmt={setTradeAmt}
+          />
         )}
       </div>
 

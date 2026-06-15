@@ -20,8 +20,9 @@ const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "1Y": "1d", "MAX": "1mo" };
 export default function Portfolio({
   totalValue, totalPL, cash, positions, allocation, setActive,
   tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested, gameStart,
+  readOnly = false, initialStock = null,
 }) {
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(initialStock);
   const [allocBy, setAllocBy] = useState("Shares"); // Shares | Industry | Country
   const [perfTf, setPerfTf] = useState("MAX");       // performance-graph timeframe
   const { priceOf, curOf, detailOf, chgOf } = usePrices();
@@ -131,7 +132,7 @@ export default function Portfolio({
             <StockDetail
               active={active} stock={detailOf(active)} tf={tf} setTf={setTf} positions={positions}
               tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt}
-              setTradeAmt={setTradeAmt} trade={trade} cash={cash} onBack={() => setSelected(null)}
+              setTradeAmt={setTradeAmt} trade={trade} cash={cash} onBack={() => setSelected(null)} readOnly={readOnly}
             />
           ) : (
             <div style={{ padding: 32 }}>

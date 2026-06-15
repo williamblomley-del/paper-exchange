@@ -9,12 +9,18 @@ import Stat from "../components/Stat.jsx";
 import Avatar from "../components/Avatar.jsx";
 import Logo from "../components/Logo.jsx";
 import BigChart from "../components/BigChart.jsx";
+import Portfolio from "./Portfolio.jsx";
 
 // LEADERBOARD — real players in your game, ranked by total value.
 // board: [{ id, username, value, ret }] (from App). meId = my user id.
-export default function Leaderboard({ board = [], meId, game, selUser, setSelUser }) {
+export default function Leaderboard({
+  board = [], meId, game, selUser, setSelUser,
+  active, setActive, tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt,
+}) {
   const { priceOf, curOf, detailOf } = usePrices();
   const [snaps, setSnaps] = useState([]);
+  const [viewMember, setViewMember] = useState(null); // a player whose full portfolio we're viewing
+  const [viewStock, setViewStock] = useState(null);   // optional stock to open in that view
   // Load the selected player's real value history (needs game-scoped snap_read RLS).
   const selId = (board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0])?.id;
   useEffect(() => {
@@ -38,6 +44,35 @@ export default function Leaderboard({ board = [], meId, game, selUser, setSelUse
   }
 
   const sel = board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0];
+  function openRival(member, stock) {
+    setViewMember(member); setViewStock(stock || null);
+    if (stock) setActive(stock); // so the app fetches that stock's price/chart
+  }
+
+  // Viewing a player's FULL portfolio (read-only) — reuses the Portfolio layout.
+  if (viewMember) {
+    const m = viewMember;
+    const map = {};
+    (m.holdings || []).forEach((h) => { map[h.ticker] = { shares: h.shares, avgCost: h.avgCost }; });
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", borderBottom: `1px solid ${C.line}` }}>
+          <button onClick={() => { setViewMember(null); setViewStock(null); }} className="btn" style={{ border: `1px solid ${C.line}`, background: C.card, borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, color: C.ink }}>← Leaderboard</button>
+          <Avatar name={m.username} size={28} />
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{m.username}{m.id === meId ? " (you)" : ""}'s portfolio</span>
+          <span style={{ fontSize: 11, color: C.dim, marginLeft: 4 }}>read-only</span>
+        </div>
+        <Portfolio
+          readOnly initialStock={viewStock}
+          positions={map} cash={m.cash ?? 0} totalValue={m.value}
+          totalPL={m.value - (m.deposited || 0)} invested={m.deposited || 0}
+          active={active} setActive={setActive} tf={tf} setTf={setTf}
+          tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt} setTradeAmt={setTradeAmt}
+          trade={() => {}} history={snaps}
+        />
+      </div>
+    );
+  }
 
   return (
     <Panel pad={0}>
@@ -100,7 +135,7 @@ export default function Leaderboard({ board = [], meId, game, selUser, setSelUse
             const hs = [...(sel.holdings || [])].map((h) => ({ ...h, val: h.shares * priceOf(h.ticker) })).sort((a, b) => b.val - a.val);
             if (hs.length === 0) return <div style={{ fontSize: 12.5, color: C.dim, padding: "6px 0" }}>No holdings yet — all in cash.</div>;
             return hs.map((h) => (
-              <div key={h.ticker} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
+              <div key={h.ticker} onClick={() => openRival(sel, h.ticker)} className="wrow" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", padding: "9px 6px", margin: "0 -6px", borderRadius: 8, cursor: "pointer", borderBottom: `1px solid ${C.lineSoft}` }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                   <Logo ticker={h.ticker} size={26} />
                   <span style={{ minWidth: 0 }}>
@@ -115,9 +150,10 @@ export default function Leaderboard({ board = [], meId, game, selUser, setSelUse
               </div>
             ));
           })()}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0 0", fontSize: 12.5, color: C.dim }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0 14px", fontSize: 12.5, color: C.dim }}>
             <span>Cash</span><span style={{ fontWeight: 600, color: C.ink }}>{P(sel.cash ?? 0)}</span>
           </div>
+          <button onClick={() => openRival(sel, null)} className="trbtn" style={{ width: "100%", padding: "11px 0", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 10, background: C.blue, color: "#fff" }}>Show full portfolio</button>
         </div>
       </div>
     </Panel>

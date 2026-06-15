@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C } from "../theme.js";
 import { usePrices } from "../lib/pricesContext.js";
 
@@ -30,9 +30,17 @@ export default function Logo({ ticker, size = 30, round = false, src = null }) {
     .filter((u, i, a) => a.indexOf(u) === i); // dedupe (US tickers: full === base)
   const [idx, setIdx] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef(null);
   useEffect(() => { setIdx(0); setLoaded(false); }, [candidates[0], candidates.length]);
   const radius = round ? "50%" : size * 0.28;
   const url = candidates[idx];
+  // Cached images often finish loading before React attaches onLoad, so the event
+  // never fires → logo stays hidden. Catch that case: if the <img> is already
+  // complete after render, mark it loaded.
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+  }, [url]);
 
   const palette = {
     NVDA: "#76B900", AAPL: "#111", MSFT: "#00A4EF", GOOGL: "#4285F4", AMZN: "#FF9900",
@@ -50,7 +58,7 @@ export default function Logo({ ticker, size = 30, round = false, src = null }) {
       }}>{ticker ? ticker[0] : "?"}</div>
       {url && (
         <img
-          src={url} alt={ticker} width={size} height={size}
+          ref={imgRef} src={url} alt={ticker} width={size} height={size}
           onLoad={() => setLoaded(true)}
           onError={() => { setLoaded(false); setIdx((i) => i + 1); }}
           style={{ position: "absolute", inset: 0, width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: `1px solid ${C.line}`, opacity: loaded ? 1 : 0, transition: "opacity .15s" }}

@@ -47,11 +47,20 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   const label = LABEL[tf];
   const now = Math.floor(Date.now() / 1000);
   const baseCap = invested || totalValue || 1;
-  // Append the LIVE current value as the final point, UN-scaled, so the line ENDS
-  // exactly on the headline total value. (Start = the account's real value at the
-  // window's beginning, not forced to 10k — owner's chosen trade-off.)
-  const tail = { t: now, c: totalValue };
-  const points = hist && hist.length ? [...hist, tail] : [{ t: now - 86400, c: baseCap }, tail];
+  const tail = { t: now, c: totalValue }; // ends exactly on the live total value
+
+  let points;
+  if (hist && hist.length) {
+    // Prepend a FLAT baseline from the start of the window to the first market bar,
+    // so you can see the account sitting at its value (≈10k) while the market was
+    // closed, then move when trading opens (like Trading 212's flat-then-jump 1D).
+    const DAYS = { "1D": 1, "1W": 7, "1M": 31, "1Y": 366, "MAX": 36500 };
+    const winStart = Math.max(now - (DAYS[tf] || 1) * 86400, accountStartT || 0);
+    const core = hist[0].t > winStart + 300 ? [{ t: winStart, c: hist[0].c }, ...hist] : hist;
+    points = [...core, tail];
+  } else {
+    points = [{ t: now - 86400, c: baseCap }, tail];
+  }
   const base = points[0].c;
   const chg = points[points.length - 1].c - base;
   const pct = base ? (chg / base) * 100 : 0;

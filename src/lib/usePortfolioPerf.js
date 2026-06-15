@@ -40,7 +40,10 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   const ageDays = accountStartT ? (Math.floor(Date.now() / 1000) - accountStartT) / 86400 : 9999;
   const { range, windowDays, down10, res } = resolve(tf, ageDays, mode);
   // Earliest timestamp to keep: the window start, but never before the account existed.
-  const cutoff = Math.max(Math.floor(Date.now() / 1000) - windowDays * 86400, accountStartT || 0);
+  // If the account start is unknown (e.g. a rival with no readable snapshots), floor at
+  // ~1 year ago so an unbounded "all-time" window doesn't reach back to epoch 1970.
+  const nowS = Math.floor(Date.now() / 1000);
+  const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
   useEffect(() => {
@@ -74,18 +77,32 @@ export function usePortfolioPerf(positions, cash, invested, totalValue, tf, hist
   }, [key]);
 
   const label = LABEL[tf] || "All time";
-  const now = Math.floor(Date.now() / 1000);
-  const baseCap = invested || totalValue || 1;
-  const tail = { t: now, c: totalValue }; // ends exactly on the live total value
+  const baseCap = invested || totalValue || 1; // starting capital (start cash + deposits)
+  const tail = { t: nowS, c: totalValue };     // ends exactly on the live total value
+  // Does this view reach back to when the account opened? If so, every account begins
+  // at its STARTING CAPITAL ("10k") — anchor the curve there with a flat "day before
+  // you opened" segment, then let it move once shares are actually bought.
+  const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
   let points;
   if (hist && hist.length) {
-    // Prepend a flat baseline from the window start to the first market bar, so the
-    // account sits at its value while the market was closed, then moves when it opens.
-    const core = hist[0].t > cutoff + 300 ? [{ t: cutoff, c: hist[0].c }, ...hist] : hist;
-    points = [...core, tail];
+    let lead;
+    if (includesOpen) {
+      // flat at the starting capital from the day before open; hold flat through open
+      // unless the first market bar is right at open (avoids a duplicate timestamp).
+      lead = [{ t: accountStartT - 86400, c: baseCap }];
+      if (hist[0].t > accountStartT + 300) lead.push({ t: accountStartT, c: baseCap });
+    } else if (hist[0].t > cutoff + 300) {
+      // window starts after open → flat baseline at the window-start market value
+      lead = [{ t: cutoff, c: hist[0].c }];
+    } else {
+      lead = [];
+    }
+    points = [...lead, ...hist, tail];
   } else {
-    points = [{ t: now - 86400, c: baseCap }, tail];
+    // no market data yet (e.g. all cash) → flat line at the starting capital
+    const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
+    points = [{ t: startT, c: baseCap }, tail];
   }
   const base = points[0].c;
   const chg = points[points.length - 1].c - base;

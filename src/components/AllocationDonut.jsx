@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { C } from "../theme.js";
 
 // Monochrome donut with external connector-line labels (reference style).
@@ -36,6 +36,7 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   const click = (s) => { if (s.ticker && onSelect) onSelect(s.ticker); };
   const W = 520, H = 300, cx = 260, cy = 150, R = 102, r = 62;
   const [hover, setHover] = useState(null); // index of the hovered slice (pops out)
+  const svgRef = useRef(null);
 
   // sort, then roll only the SMALL slices (< 4% of the total) into "Other" so the
   // chart stays readable without an oversized "Other" wedge. A lone small slice
@@ -57,12 +58,29 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
     const mid = (a0 + a1) / 2;
     const right = Math.cos(mid) >= 0;
     return {
-      ...it, frac, color: SHADES[i % SHADES.length], right,
+      ...it, frac, color: SHADES[i % SHADES.length], right, a0, a1,
       d: seg(cx, cy, R, r, a0, a1),
       ax: cx + R * Math.cos(mid), ay: cy + R * Math.sin(mid),
       mx: Math.cos(mid), my: Math.sin(mid), // radial direction (for hover pop-out)
     };
   });
+
+  // Which slice is under the cursor — computed from the cursor's ANGLE/position on
+  // the whole chart (not per-slice mouse-enter/leave). This avoids the flicker where
+  // a slice pops out from under the cursor → "leave" → pops back → "enter" → loop.
+  function sliceAt(e) {
+    const rect = svgRef.current.getBoundingClientRect();
+    const vx = (e.clientX - rect.left) * (W / rect.width);
+    const vy = (e.clientY - rect.top) * (H / rect.height);
+    const dx = vx - cx, dy = vy - cy, dist = Math.hypot(dx, dy);
+    if (dist < r - 6 || dist > R + 16) return -1; // outside the ring
+    let ang = Math.atan2(dy, dx);
+    if (ang < -Math.PI / 2) ang += 2 * Math.PI; // match slice range [-π/2, 3π/2)
+    return slices.findIndex((s) => ang >= s.a0 && ang < s.a1);
+  }
+  const onMove = (e) => { const i = sliceAt(e); setHover(i >= 0 ? i : null); };
+  const onClickSvg = (e) => { const i = sliceAt(e); if (i >= 0) click(slices[i]); };
+  const hoverClickable = hover != null && slices[hover]?.ticker && onSelect;
 
   // de-overlap labels per side
   ["R", "L"].forEach((side) => {
@@ -74,23 +92,21 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   const trunc = (t) => (t.length > 14 ? t.slice(0, 13) + "…" : t);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 520, height: "auto", display: "block", margin: "0 auto" }}>
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={onClickSvg} style={{ width: "100%", maxWidth: 520, height: "auto", display: "block", margin: "0 auto", cursor: hoverClickable ? "pointer" : "default" }}>
       {slices.map((s, i) => (
         <path
-          key={i} d={s.d} fill={s.color} onClick={() => click(s)}
-          onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+          key={i} d={s.d} fill={s.color}
           transform={hover === i ? `translate(${s.mx * 9} ${s.my * 9})` : undefined}
-          style={{ transition: "transform .13s ease", cursor: s.ticker && onSelect ? "pointer" : "default" }}
+          style={{ transition: "transform .13s ease", pointerEvents: "none" }}
         />
       ))}
       {slices.map((s, i) => {
         const labelX = s.right ? cx + R + 50 : cx - R - 50;
         const kneeX = s.right ? cx + R + 16 : cx - R - 16;
         return (
-          <g key={"l" + i} onClick={() => click(s)}
-            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+          <g key={"l" + i}
             transform={hover === i ? `translate(${s.mx * 9} ${s.my * 9})` : undefined}
-            style={{ transition: "transform .13s ease", cursor: s.ticker && onSelect ? "pointer" : "default" }}>
+            style={{ transition: "transform .13s ease", pointerEvents: "none" }}>
             <polyline points={`${s.ax},${s.ay} ${kneeX},${s.ly} ${s.right ? labelX - 6 : labelX + 6},${s.ly}`} fill="none" stroke={C.muted} strokeWidth="1" />
             <text x={labelX} y={s.ly - 2} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 12.5, fontWeight: 700, fill: C.ink }}>{trunc(s.label)}</text>
             <text x={labelX} y={s.ly + 13} textAnchor={s.right ? "start" : "end"} style={{ fontFamily: C.sans, fontSize: 11.5, fontWeight: 500, fill: C.dim }}>{(s.frac * 100).toFixed(1)}%</text>

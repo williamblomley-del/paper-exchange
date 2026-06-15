@@ -49,6 +49,11 @@ function PointsChart({ points, resolution, avgCost, height, blue, zoomable, onHo
     if (!el || !zoomable) return;
     function onWheel(e) {
       e.preventDefault();
+      // Hide the crosshair while zooming — no mousemove fires during a wheel scroll, so
+      // a kept `hov` index would be redrawn against the new window and appear to jump.
+      // It reappears under the cursor on the next mouse move.
+      setHov(null);
+      if (onHover) onHover(null);
       const size = hi - lo;
       const r = el.getBoundingClientRect();
       const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));

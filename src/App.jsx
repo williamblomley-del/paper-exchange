@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { C, DONUT } from "./theme.js";
 import { fmt, P, money, pct, currencyOf } from "./lib/format.js";
 import { MOCK_STOCKS, WATCH } from "./lib/mockData.js";
-import { supabase, configured, signOut, loadMemberships, createGame, joinGame, loadGameData, recordSnapshot, loadBoardRows, updateUsername } from "./lib/supabase.js";
+import { supabase, configured, signOut, loadMemberships, createGame, joinGame, loadGameData, recordSnapshot, loadBoardRows, updateUsername, loadNotifications, markNotificationsRead, grantFunds, requestFunds, updateDepositConfig } from "./lib/supabase.js";
 import { fetchQuote, fetchQuotes, fetchPrices, searchSymbols, fetchLists } from "./lib/prices.js";
 import { PricesCtx } from "./lib/pricesContext.js";
 import GlobalStyles from "./components/GlobalStyles.jsx";
@@ -50,6 +50,8 @@ export default function App() {
   const [currentMid, setCurrentMid] = useState(null); // current membership id
   const [board, setBoard] = useState([]);             // [{ id, username, value, ret }]
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifs, setNotifs] = useState([]);           // current membership's notifications
+  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
@@ -80,6 +82,48 @@ export default function App() {
   const mem = memberships.find((m) => m.id === currentMid) || null;
   const game = mem?.games || null;
   const username = mem?.username || session?.user?.user_metadata?.username || "You";
+  const isCreator = !!(game && session?.user && game.created_by === session.user.id);
+  const unread = notifs.filter((n) => !n.read).length;
+
+  // Reload notifications for the current membership. Also re-pulls memberships +
+  // board when balances may have changed (after a grant / new deposit).
+  async function refreshNotifs(reloadBalances = false) {
+    if (!currentMid) return;
+    const list = await loadNotifications(currentMid);
+    setNotifs(list);
+    if (reloadBalances && session?.user) {
+      const mems = await loadMemberships(session.user.id);
+      setMemberships(mems);
+      const m = mems.find((x) => x.id === currentMid);
+      if (m) { setCash(Number(m.cash)); setInvested(Number(m.deposited)); }
+      if (tab === "board") loadBoard();
+    }
+  }
+
+  // Creator gives a player money → reload balances + board + that player's notif.
+  async function handleGrant(membershipId, amount) {
+    const r = await grantFunds(membershipId, amount);
+    if (r.error) { setMsg({ kind: "err", text: r.error.message }); return r; }
+    setMsg({ kind: "ok", text: `Gave P£${Number(amount).toLocaleString("en-GB")} to the player.` });
+    await refreshNotifs(true);
+    return r;
+  }
+  // Player requests money → pings the creator (no balance change).
+  async function handleRequest(amount, note) {
+    const r = await requestFunds(currentMid, amount, note);
+    if (r.error) { setMsg({ kind: "err", text: r.error.message }); return r; }
+    setMsg({ kind: "ok", text: `Requested P£${Number(amount).toLocaleString("en-GB")} from the game creator.` });
+    return r;
+  }
+  // Creator edits the recurring deposit (amount + cadence + time of day).
+  async function handleDepositConfig(amount, cadence, time) {
+    if (!game?.id) return { error: { message: "No game." } };
+    const r = await updateDepositConfig(game.id, amount, cadence, time);
+    if (r.error) { setMsg({ kind: "err", text: r.error.message }); return r; }
+    setMsg({ kind: "ok", text: "Deposit settings updated." });
+    const mems = await loadMemberships(session.user.id); setMemberships(mems);
+    return r;
+  }
 
   // ── auth wiring ──────────────────────────────────────────────
   useEffect(() => {
@@ -196,6 +240,16 @@ export default function App() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, positions, active, tf]);
+
+  // Notifications: load on entering a game, then poll every 60s (deposits land
+  // server-side via cron, grants/requests via other players → arrive in the bell).
+  useEffect(() => {
+    if (phase !== "app" || !currentMid) return;
+    refreshNotifs(false);
+    const id = setInterval(() => refreshNotifs(false), 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, currentMid]);
 
   // Real market lists (gainers/losers/most active) once in the app.
   useEffect(() => {
@@ -431,9 +485,31 @@ export default function App() {
             <button onClick={() => setSearchModal(true)} style={{ width: 300, display: "flex", alignItems: "center", gap: 9, padding: "12px 18px", fontSize: 14, background: C.fill, color: C.muted, border: `1px solid ${C.line}`, borderRadius: 999, cursor: "pointer", textAlign: "left" }}>
               <span style={{ fontSize: 14 }}>⌕</span> Search
             </button>
-            <button className="btn" aria-label="Notifications" title="Notifications" style={{ border: "none", background: "none", padding: 0, color: C.dim, lineHeight: 0, cursor: "pointer" }}>
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-            </button>
+            <div style={{ position: "relative" }}>
+              <button onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next && unread) { markNotificationsRead(currentMid).then(() => refreshNotifs(false)); } }} className="btn" aria-label="Notifications" title="Notifications" style={{ border: "none", background: "none", padding: 0, color: notifOpen ? C.blue : C.dim, lineHeight: 0, cursor: "pointer", position: "relative" }}>
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+                {unread > 0 && <span style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: C.red, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</span>}
+              </button>
+              {notifOpen && (
+                <>
+                  <div onClick={() => setNotifOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }} />
+                  <div style={{ position: "absolute", right: 0, top: 38, zIndex: 31, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: C.sh, width: 320, maxHeight: 420, overflowY: "auto" }}>
+                    <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.line}`, fontWeight: 700, fontSize: 14 }}>Notifications</div>
+                    {notifs.length === 0 ? (
+                      <div style={{ padding: "20px 14px", color: C.dim, fontSize: 13, textAlign: "center" }}>No notifications yet.</div>
+                    ) : notifs.map((n) => (
+                      <div key={n.id} style={{ padding: "11px 14px", borderBottom: `1px solid ${C.lineSoft}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <span style={{ fontSize: 15, lineHeight: "20px" }}>{n.kind === "deposit" ? "💰" : n.kind === "grant" ? "🎁" : "🙋"}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{n.message}</div>
+                          <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>{new Date(n.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <div style={{ position: "relative" }}>
               <button onClick={() => setMenuOpen((o) => !o)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }} aria-label="Account"><Avatar name={username} size={34} /></button>
               {menuOpen && (
@@ -561,6 +637,7 @@ export default function App() {
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} invested={invested} gameStart={mem?.created_at}
+            onRequestMoney={handleRequest}
           />
         )}
 
@@ -569,6 +646,7 @@ export default function App() {
             board={board} meId={currentMid} game={game} selUser={selUser} setSelUser={setSelUser}
             active={active} setActive={setActive} tf={tf} setTf={setTf}
             tradeMode={tradeMode} setTradeMode={setTradeMode} tradeAmt={tradeAmt} setTradeAmt={setTradeAmt}
+            isCreator={isCreator} onGrant={handleGrant} onDepositConfig={handleDepositConfig}
           />
         )}
       </div>

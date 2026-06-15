@@ -11,16 +11,26 @@ import Logo from "../components/Logo.jsx";
 import BigChart from "../components/BigChart.jsx";
 import Portfolio from "./Portfolio.jsx";
 
+// recurring-deposit cadences (value matches the DB / cron)
+const CADENCES = [["daily", "daily"], ["2d", "every 2 days"], ["2pw", "twice a week"], ["weekly", "weekly"], ["monthly", "monthly"]];
+const inp = { width: "100%", boxSizing: "border-box", padding: "10px 12px", fontSize: 14, border: `1px solid ${C.line}`, borderRadius: 10, marginBottom: 8, background: C.fill };
+
 // LEADERBOARD — real players in your game, ranked by total value.
 // board: [{ id, username, value, ret }] (from App). meId = my user id.
 export default function Leaderboard({
   board = [], meId, game, selUser, setSelUser,
   active, setActive, tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt,
+  isCreator = false, onGrant, onDepositConfig,
 }) {
   const { priceOf, curOf, detailOf } = usePrices();
   const [snaps, setSnaps] = useState([]);
   const [viewMember, setViewMember] = useState(null); // a player whose full portfolio we're viewing
   const [viewStock, setViewStock] = useState(null);   // optional stock to open in that view
+  const [grantAmt, setGrantAmt] = useState("");       // creator: give money to selected player
+  const [depOpen, setDepOpen] = useState(false);      // creator: deposit-settings editor
+  const [depAmt, setDepAmt] = useState(String(game?.deposit_amount || ""));
+  const [depCad, setDepCad] = useState(game?.deposit_cadence || "daily");
+  const [depTime, setDepTime] = useState((game?.deposit_time || "09:00").slice(0, 5));
   // Load the selected player's real value history (needs game-scoped snap_read RLS).
   const selId = (board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0])?.id;
   useEffect(() => {
@@ -111,6 +121,31 @@ export default function Leaderboard({
               </div>
             );
           })}
+
+          {/* creator: edit the recurring deposit (amount + cadence + time of day) */}
+          {isCreator && onDepositConfig && (
+            <div style={{ padding: "16px 24px 22px", borderTop: `1px solid ${C.line}` }}>
+              {!depOpen ? (
+                <button onClick={() => setDepOpen(true)} className="btn" style={{ width: "100%", padding: "11px 0", fontSize: 13, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 10, background: C.card, color: C.ink, cursor: "pointer" }}>
+                  Deposit settings{Number(game?.deposit_amount) > 0 ? ` · P£${Number(game.deposit_amount).toLocaleString("en-GB")} ${CADENCES.find((c) => c[0] === game.deposit_cadence)?.[1] || ""}` : " · off"}
+                </button>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Recurring deposit (creator)</div>
+                  <input type="number" value={depAmt} onChange={(e) => setDepAmt(e.target.value)} placeholder="Amount per deposit (P£), 0 = off" style={inp} />
+                  <select value={depCad} onChange={(e) => setDepCad(e.target.value)} style={inp}>
+                    {CADENCES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <label style={{ fontSize: 11.5, color: C.dim, display: "block", margin: "2px 0 4px" }}>Time of day (UK)</label>
+                  <input type="time" value={depTime} onChange={(e) => setDepTime(e.target.value)} style={inp} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button onClick={() => setDepOpen(false)} className="btn" style={{ flex: 1, padding: "10px 0", fontSize: 13.5, fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.card, color: C.dim, cursor: "pointer" }}>Cancel</button>
+                    <button onClick={async () => { const r = await onDepositConfig(Number(depAmt) || 0, depCad, depTime); if (!r?.error) setDepOpen(false); }} className="trbtn" style={{ flex: 1, padding: "10px 0", fontSize: 13.5, fontWeight: 700, border: "none", borderRadius: 10, background: C.blue, color: "#fff", cursor: "pointer" }}>Save</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* selected player */}
@@ -155,6 +190,17 @@ export default function Leaderboard({
             <span>Cash</span><span style={{ fontWeight: 600, color: C.ink }}>{P(sel.cash ?? 0)}</span>
           </div>
           <button onClick={() => openRival(sel, null)} className="trbtn" style={{ width: "100%", padding: "11px 0", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 10, background: C.blue, color: "#fff" }}>Show full portfolio</button>
+
+          {/* creator: give this player money */}
+          {isCreator && onGrant && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.line}` }}>
+              <div style={{ fontSize: 12, color: C.dim, fontWeight: 700, marginBottom: 8 }}>Give money to {sel.username}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="number" value={grantAmt} onChange={(e) => setGrantAmt(e.target.value)} placeholder="Amount (P£)" style={{ ...inp, marginBottom: 0, flex: 1 }} />
+                <button onClick={async () => { if (!(Number(grantAmt) > 0)) return; const r = await onGrant(sel.id, Number(grantAmt)); if (!r?.error) setGrantAmt(""); }} className="trbtn" style={{ padding: "10px 18px", fontSize: 13.5, fontWeight: 700, border: "none", borderRadius: 10, background: C.green, color: "#fff", cursor: "pointer" }}>Give</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Panel>

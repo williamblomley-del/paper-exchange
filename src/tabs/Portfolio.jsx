@@ -18,12 +18,15 @@ import AssetHeatmap from "../components/AssetHeatmap.jsx";
 export default function Portfolio({
   totalValue, totalPL, cash, positions, allocation, setActive,
   tf, setTf, tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, active, history, invested, gameStart,
-  readOnly = false, initialStock = null,
+  readOnly = false, initialStock = null, onRequestMoney,
 }) {
   const [selected, setSelected] = useState(initialStock);
   const [allocBy, setAllocBy] = useState("Shares"); // Shares | Industry | Country
   const [perfTf, setPerfTf] = useState("MAX");       // performance-graph timeframe
-  const { priceOf, curOf, detailOf, chgOf } = usePrices();
+  const [reqOpen, setReqOpen] = useState(false);     // "request more money" form
+  const [reqAmt, setReqAmt] = useState("");
+  const [reqNote, setReqNote] = useState("");
+  const { priceOf, curOf, detailOf } = usePrices();
   const totalRetPct = (totalPL / (invested || 1)) * 100;
   function openStock(t) { setActive(t); setSelected(t); }
 
@@ -96,9 +99,9 @@ export default function Portfolio({
             <span style={{ fontWeight: 700, fontSize: 14 }}>Holdings</span>
             <span style={{ fontSize: 12, color: C.dim }}>{holdings.length} positions</span>
           </div>
-          {holdings.map(({ t, val }) => {
+          {holdings.map(({ t, val, plP }) => {
             const on = selected === t;
-            const day = chgOf(t); // today's % change (what "the stock went up" means)
+            const day = plP; // return since bought (profit/loss vs average buy price)
             return (
               <div key={t} onClick={() => openStock(t)} className="wrow" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", padding: "11px 20px", cursor: "pointer", borderBottom: `1px solid ${C.lineSoft}`, borderLeft: `3px solid ${on ? C.blue : "transparent"}`, background: on ? "rgba(70,160,255,0.06)" : "transparent" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -125,6 +128,25 @@ export default function Portfolio({
 
           {/* asset heatmap (Trading 212 style) — shows on scroll */}
           <AssetHeatmap positions={positions} onSelect={openStock} />
+
+          {/* request more money from the game creator */}
+          {!readOnly && onRequestMoney && (
+            <div style={{ padding: "16px 20px 22px", borderTop: `1px solid ${C.line}` }}>
+              {!reqOpen ? (
+                <button onClick={() => setReqOpen(true)} className="btn" style={{ width: "100%", padding: "11px 0", fontSize: 13.5, fontWeight: 700, border: `1px solid ${C.line}`, borderRadius: 10, background: C.card, color: C.ink, cursor: "pointer" }}>Request more money</button>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Request money from the creator</div>
+                  <input type="number" value={reqAmt} onChange={(e) => setReqAmt(e.target.value)} placeholder="Amount (P£)" style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", fontSize: 14, border: `1px solid ${C.line}`, borderRadius: 10, marginBottom: 8, background: C.fill }} />
+                  <input value={reqNote} onChange={(e) => setReqNote(e.target.value)} placeholder="Note (optional)" maxLength={80} style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", fontSize: 14, border: `1px solid ${C.line}`, borderRadius: 10, marginBottom: 8, background: C.fill }} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { setReqOpen(false); setReqAmt(""); setReqNote(""); }} className="btn" style={{ flex: 1, padding: "10px 0", fontSize: 13.5, fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.card, color: C.dim, cursor: "pointer" }}>Cancel</button>
+                    <button onClick={async () => { if (!(Number(reqAmt) > 0)) return; const r = await onRequestMoney(Number(reqAmt), reqNote); if (!r?.error) { setReqOpen(false); setReqAmt(""); setReqNote(""); } }} className="trbtn" style={{ flex: 1, padding: "10px 0", fontSize: 13.5, fontWeight: 700, border: "none", borderRadius: 10, background: C.blue, color: "#fff", cursor: "pointer" }}>Send request</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT (wide) — own scroll */}

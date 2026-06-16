@@ -44,14 +44,9 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
-  // RECORDED timeline (real value points logged ~every 15 min + server-written deposit
-  // steps). Used for the recent period; the ESTIMATE below covers the period before
-  // recording began (and is spliced underneath the recorded points).
-  const vhWin = (vh || []).filter((p) => p && p.value != null && p.t >= cutoff);
-
-  // Estimated recurring-deposit schedule for the PRE-recording period, so past deposits
-  // show as steps in the estimate too. The real total added beyond start cash is spread
-  // across the cadence so the totals reconcile (roughly handles config changes / grants).
+  // Recurring-deposit schedule (so deposits show as clean steps on the estimate). The
+  // real total added beyond start cash is spread across the cadence from account open,
+  // which for a young daily-deposit account lands ≈ the actual deposits (e.g. two 150s).
   const totalDep = Math.max(0, (deposited != null ? deposited : (startCash || 0)) - (startCash || 0));
   const depTimes = [];
   if (totalDep > 0 && accountStartT) {
@@ -104,18 +99,12 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   // time (they're part of your balance growth — the "simple" model).
   const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
-  // Prefer the REAL recorded timeline when we have it — it already contains the true
-  // deposit steps (written at the exact moment money landed), is consistent across
-  // timeframes (every window draws the same points), and needs no guessing. The
-  // cost-basis ESTIMATE is only a fallback until ≥2 recorded points exist (brand-new
-  // accounts). We do NOT splice the two — that double-counted deposits (the "300 jumps").
-  const vhPts = vhWin.map((p) => ({ t: p.t, c: p.value }));
-  let core = null;
-  if (vhPts.length >= 2) {
-    core = vhPts;
-  } else if (hist && hist.length) {
-    core = hist;
-  }
+  // Use the smooth cost-basis ESTIMATE for the curve shape: holdings priced via Yahoo +
+  // clean deposit steps + ends on the live value. We do NOT plot the raw recorded points
+  // as the shape — for inactive accounts those are just sparse deposit rows written at
+  // ESTIMATED heights (the server can't price holdings), which produced a jagged line
+  // (the "+315 / dip / re-rise"). Recording continues in the background for future use.
+  let core = (hist && hist.length) ? hist : null;
   if (core && core.length > 350) { const step = Math.ceil(core.length / 350); core = core.filter((_, i) => i % step === 0); }
 
   let points;

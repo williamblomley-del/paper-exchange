@@ -50,7 +50,7 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   let data = big;
   if (small.length === 1) data = [...big, small[0]];
   else if (small.length > 1) data = [...big, { label: "Other", value: small.reduce((s, x) => s + x.value, 0) }];
-  if (cashItem) data = [...data, cashItem]; // cash always visible
+  if (cashItem && cashItem.value / total >= 0.0005) data = [...data, cashItem]; // cash shown unless it rounds to 0.0%
   data = data.sort((a, b) => b.value - a.value);
   if (data.length === 0) data = sorted; // everything was tiny — show as-is
 

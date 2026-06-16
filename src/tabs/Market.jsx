@@ -9,7 +9,7 @@ import StockDetail from "../components/StockDetail.jsx";
 // (shared StockDetail). No floating grey gaps.
 export default function Market({
   active, setActive, tf, setTf, stock, positions,
-  tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, totalValue, history, startCash, deposited, vhistory, depCadence, lists, gameStart,
+  tradeMode, setTradeMode, tradeAmt, setTradeAmt, trade, cash, totalValue, history, startCash, deposited, vhistory, depCadence, depEvents, depAmount, lists, gameStart,
 }) {
   return (
     <Panel pad={0}>
@@ -18,7 +18,7 @@ export default function Market({
       <div style={{ display: "grid", gridTemplateColumns: "470px 1fr", height: "calc(100vh - 84px)" }}>
         {/* LEFT — account + watchlist, divided from the right by one line; own scroll */}
         <div className="colscroll" style={{ borderRight: `1px solid ${C.line}`, overflowY: "auto", minHeight: 0 }}>
-          <AccountCard totalValue={totalValue} cash={cash} positions={positions} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={depCadence} gameStart={gameStart} />
+          <AccountCard totalValue={totalValue} cash={cash} positions={positions} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={depCadence} depEvents={depEvents} depAmount={depAmount} gameStart={gameStart} />
           <MarketWatch active={active} setActive={setActive} lists={lists} />
         </div>
 

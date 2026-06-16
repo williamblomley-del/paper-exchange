@@ -27,7 +27,7 @@ function resolve(tf, ageDays) {
 // cadence → days between recurring deposits (for the estimated pre-recording schedule)
 const CAD_DAYS = { daily: 1, "2d": 2, "2pw": 3.5, weekly: 7, monthly: 30 };
 
-export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null, depCadence = null) {
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null, depCadence = null, depEvents = null, depAmount = null) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -44,18 +44,24 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
-  // Recurring-deposit schedule (so deposits show as clean steps on the estimate). The
-  // real total added beyond start cash is spread across the cadence from account open,
-  // which for a young daily-deposit account lands ≈ the actual deposits (e.g. two 150s).
+  // Deposit STEPS on the estimate. Prefer the REAL events (exact time + amount) — e.g. from
+  // your own notifications — so each deposit lands at the moment it actually happened. If
+  // we don't have events (a rival, whose notifications we can't read), fall back to N
+  // evenly-spaced steps of the deposit amount, N = totalDep / depositAmount, so the COUNT
+  // matches reality (e.g. two 150s) even when the account is younger than the deposit count.
   const totalDep = Math.max(0, (deposited != null ? deposited : (startCash || 0)) - (startCash || 0));
-  const depTimes = [];
-  if (totalDep > 0 && accountStartT) {
-    const ivS = (CAD_DAYS[depCadence] || 1) * 86400;
-    for (let te = accountStartT + ivS; te <= nowS && depTimes.length < 4000; te += ivS) depTimes.push(te);
+  let depList = (depEvents || [])
+    .filter((e) => e && e.t && e.amount > 0)
+    .map((e) => ({ t: e.t, amount: e.amount }))
+    .sort((a, b) => a.t - b.t);
+  if (depList.length === 0 && totalDep > 0 && accountStartT) {
+    const N = depAmount > 0 ? Math.max(1, Math.round(totalDep / depAmount))
+      : Math.max(1, Math.round(ageDays / (CAD_DAYS[depCadence] || 1)));
+    const span = Math.max(1, nowS - accountStartT);
+    for (let k = 0; k < N && k < 4000; k++) depList.push({ t: accountStartT + Math.round(((k + 1) / (N + 1)) * span), amount: totalDep / N });
   }
-  const depPer = depTimes.length ? totalDep / depTimes.length : 0;
-  const depositsAfter = (t) => depPer * depTimes.filter((te) => te > t).length;
-  const ekey = key + "|" + depPer + "|" + depTimes.length;
+  const depositsAfter = (t) => depList.filter((e) => e.t > t).reduce((s, e) => s + e.amount, 0);
+  const ekey = key + "|" + depList.map((e) => e.t + ":" + Math.round(e.amount)).join(",");
 
   useEffect(() => {
     let alive = true;
@@ -121,10 +127,10 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
       lead = [];
     }
     points = [...lead, ...core, tail];
-  } else if (depTimes.length) {
-    // all cash, no recorded points → flat line stepping up at each estimated deposit
+  } else if (depList.length) {
+    // all cash, no holdings → flat line stepping up at each deposit
     const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
-    points = [{ t: startT, c: baseCap }, ...depTimes.map((te) => ({ t: te, c: cash - depositsAfter(te) })), tail];
+    points = [{ t: startT, c: baseCap }, ...depList.map((e) => ({ t: e.t, c: cash - depositsAfter(e.t) })), tail];
   } else {
     const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
     points = [{ t: startT, c: baseCap }, tail];

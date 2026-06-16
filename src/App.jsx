@@ -320,7 +320,7 @@ export default function App() {
       const dep = Number(r.deposited) || sc;
       return {
         id: r.id, username: r.username, value: v, ret: ((v - dep) / dep) * 100,
-        cash: Number(r.cash), deposited: dep, startCash: sc,
+        cash: Number(r.cash), deposited: dep, startCash: sc, created_at: r.created_at,
         holdings: (r.positions || []).map((x) => ({ ticker: x.ticker, shares: Number(x.shares), avgCost: Number(x.avg_cost) })),
       };
     }).sort((a, b) => b.value - a.value);

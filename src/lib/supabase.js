@@ -173,7 +173,7 @@ export async function updateDepositConfig(gameId, amount, cadence, time) {
 export async function loadBoardRows(gameId) {
   const { data } = await supabase
     .from("memberships")
-    .select("id, user_id, username, cash, deposited, positions(ticker, shares, avg_cost)")
+    .select("id, user_id, username, cash, deposited, created_at, positions(ticker, shares, avg_cost)")
     .eq("game_id", gameId);
   return data || [];
 }

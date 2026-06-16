@@ -48,7 +48,7 @@ export default function Leaderboard({
   const selRow = board.find((r) => r.id === selUser) || board.find((r) => r.id === meId) || board[0];
   const selMap = {};
   (selRow?.holdings || []).forEach((h) => { selMap[h.ticker] = { shares: h.shares, avgCost: h.avgCost }; });
-  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, null, "leaderboard", selRow?.deposited, selVh, game?.deposit_cadence);
+  const lbPerf = usePortfolioPerf(selMap, selRow?.cash ?? 0, selRow?.startCash ?? game?.start_cash ?? 0, selRow?.value ?? 0, "MAX", snaps, selRow?.created_at ?? null, "leaderboard", selRow?.deposited, selVh, game?.deposit_cadence);
 
   if (!game) {
     return <Panel pad={40}><div style={{ textAlign: "center", color: C.dim, fontSize: 14 }}>You're not in a game yet.</div></Panel>;

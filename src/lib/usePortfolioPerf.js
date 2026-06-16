@@ -70,22 +70,24 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
       const series = tickers.map((t) => {
         let h = (hmap[t] || []).filter((p) => p && p.c != null && p.t >= cutoff);
         if (down10) h = h.filter((_, i) => i % 2 === 0); // 5-min feed → 10-min points
-        return { shares: positions[t].shares, h };
+        return { shares: positions[t].shares, avgCost: positions[t].avgCost, h };
       });
       const tsSet = new Set();
       series.forEach((s) => s.h.forEach((p) => tsSet.add(p.t)));
       const ts = [...tsSet].sort((a, b) => a - b);
       if (ts.length < 2) { setHist(null); return; }
       const ptr = series.map(() => 0);
-      const last = series.map((s) => (s.h[0] ? s.h[0].c : null)); // value pre-first-tick at its first price
+      const last = series.map((s) => (s.h[0] ? s.h[0].c : null)); // price pre-first-tick = its first price
       const pts = ts.map((time) => {
-        // cash baseline steps with the estimated deposits → past deposits show as jumps
-        let v = cash - depositsAfter(time);
+        // COST-BASIS model: start cash + deposits-so-far + each holding's gain/loss vs what
+        // you PAID. Starts ≈ start cash (no back-projection dip) and ends exactly on the live
+        // value; deposits show as steps. (price − avgCost so a holding contributes 0 at cost.)
+        let pl = 0;
         series.forEach((s, i) => {
           while (ptr[i] < s.h.length && s.h[ptr[i]].t <= time) { last[i] = s.h[ptr[i]].c; ptr[i]++; }
-          if (last[i] != null) v += s.shares * last[i];
+          if (last[i] != null) pl += s.shares * (last[i] - s.avgCost);
         });
-        return { t: time, c: v };
+        return { t: time, c: (startCash || 0) + (totalDep - depositsAfter(time)) + pl };
       });
       setHist(pts);
     }).catch(() => { if (alive) setHist(null); });

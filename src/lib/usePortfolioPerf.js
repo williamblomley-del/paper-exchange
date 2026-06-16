@@ -29,7 +29,10 @@ function resolve(tf, ageDays, mode) {
   }
 }
 
-export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null) {
+// cadence → days between recurring deposits (for the estimated pre-recording schedule)
+const CAD_DAYS = { daily: 1, "2d": 2, "2pw": 3.5, weekly: 7, monthly: 30 };
+
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null, depCadence = null) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -46,16 +49,27 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
-  // RECORDED timeline (preferred): real value points logged ~every 15 min + deposit
-  // steps. Use them directly when there are enough in the window; otherwise fall back
-  // to the market reconstruction below (so new accounts still get a curve while points
-  // accrue). Deposits appear as real steps because they're in the recorded data.
+  // RECORDED timeline (real value points logged ~every 15 min + server-written deposit
+  // steps). Used for the recent period; the ESTIMATE below covers the period before
+  // recording began (and is spliced underneath the recorded points).
   const vhWin = (vh || []).filter((p) => p && p.value != null && p.t >= cutoff);
-  const useVH = vhWin.length >= 2;
+
+  // Estimated recurring-deposit schedule for the PRE-recording period, so past deposits
+  // show as steps in the estimate too. The real total added beyond start cash is spread
+  // across the cadence so the totals reconcile (roughly handles config changes / grants).
+  const totalDep = Math.max(0, (deposited != null ? deposited : (startCash || 0)) - (startCash || 0));
+  const depTimes = [];
+  if (totalDep > 0 && accountStartT) {
+    const ivS = (CAD_DAYS[depCadence] || 1) * 86400;
+    for (let te = accountStartT + ivS; te <= nowS && depTimes.length < 4000; te += ivS) depTimes.push(te);
+  }
+  const depPer = depTimes.length ? totalDep / depTimes.length : 0;
+  const depositsAfter = (t) => depPer * depTimes.filter((te) => te > t).length;
+  const ekey = key + "|" + depPer + "|" + depTimes.length;
 
   useEffect(() => {
     let alive = true;
-    if (useVH || tickers.length === 0) { setHist(null); return; }
+    if (tickers.length === 0) { setHist(null); return; }
     fetchHistories(tickers, range).then((hmap) => {
       if (!alive) return;
       const series = tickers.map((t) => {
@@ -70,7 +84,8 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
       const ptr = series.map(() => 0);
       const last = series.map((s) => (s.h[0] ? s.h[0].c : null)); // value pre-first-tick at its first price
       const pts = ts.map((time) => {
-        let v = cash;
+        // cash baseline steps with the estimated deposits → past deposits show as jumps
+        let v = cash - depositsAfter(time);
         series.forEach((s, i) => {
           while (ptr[i] < s.h.length && s.h[ptr[i]].t <= time) { last[i] = s.h[ptr[i]].c; ptr[i]++; }
           if (last[i] != null) v += s.shares * last[i];
@@ -81,7 +96,7 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
     }).catch(() => { if (alive) setHist(null); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, useVH]);
+  }, [ekey]);
 
   const label = LABEL[tf] || "All time";
   const baseCap = startCash || totalValue || 1; // the game's ORIGINAL start cash ("10k")
@@ -92,34 +107,43 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   // time (they're part of your balance growth — the "simple" model).
   const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
-  let points;
-  let resForChart = res;
-  if (useVH) {
-    // REAL recorded timeline. Downsample to keep the SVG light on long windows.
-    let core = vhWin.map((p) => ({ t: p.t, c: p.value }));
-    if (core.length > 300) { const step = Math.ceil(core.length / 300); core = core.filter((_, i) => i % step === 0); }
-    const lead = includesOpen ? [{ t: accountStartT - 86400, c: baseCap }] : [];
-    points = [...lead, ...core, tail];
-    resForChart = windowDays <= 7 ? "15m" : "1d"; // time labels for short windows, dates for long
+  // Splice: ESTIMATE (with deposit steps) for the past, REAL recorded points for the
+  // recent period (everything from the first recorded point onward), ending on live value.
+  const vhPts = vhWin.map((p) => ({ t: p.t, c: p.value }));
+  let core = null;
+  if (hist && hist.length && vhPts.length) {
+    const firstVhT = vhPts[0].t;
+    core = [...hist.filter((p) => p.t < firstVhT), ...vhPts];
+  } else if (vhPts.length >= 2) {
+    core = vhPts;
   } else if (hist && hist.length) {
+    core = hist;
+  }
+  if (core && core.length > 350) { const step = Math.ceil(core.length / 350); core = core.filter((_, i) => i % step === 0); }
+
+  let points;
+  if (core && core.length) {
     let lead;
     if (includesOpen) {
       // flat at the starting capital from the day before open; hold flat through open
-      // unless the first market bar is right at open (avoids a duplicate timestamp).
+      // unless the first point is right at open (avoids a duplicate timestamp).
       lead = [{ t: accountStartT - 86400, c: baseCap }];
-      if (hist[0].t > accountStartT + 300) lead.push({ t: accountStartT, c: baseCap });
-    } else if (hist[0].t > cutoff + 300) {
-      // window starts after open → flat baseline at the window-start market value
-      lead = [{ t: cutoff, c: hist[0].c }];
+      if (core[0].t > accountStartT + 300) lead.push({ t: accountStartT, c: baseCap });
+    } else if (core[0].t > cutoff + 300) {
+      lead = [{ t: cutoff, c: core[0].c }]; // window starts after open → baseline at window start
     } else {
       lead = [];
     }
-    points = [...lead, ...hist, tail];
+    points = [...lead, ...core, tail];
+  } else if (depTimes.length) {
+    // all cash, no recorded points → flat line stepping up at each estimated deposit
+    const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
+    points = [{ t: startT, c: baseCap }, ...depTimes.map((te) => ({ t: te, c: cash - depositsAfter(te) })), tail];
   } else {
-    // no market data yet (e.g. all cash) → flat line at the starting capital
     const startT = accountStartT ? accountStartT - 86400 : nowS - 86400;
     points = [{ t: startT, c: baseCap }, tail];
   }
+  const resForChart = res;
   // % EXCLUDES deposits: for views back to account open, measure vs total capital in
   // (`deposited` = start cash + every deposit) so a deposit doesn't count as performance.
   // The graph still STARTS at the start cash and shows deposits as the line rising — the

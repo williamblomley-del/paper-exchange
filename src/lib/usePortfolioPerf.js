@@ -7,26 +7,21 @@ import { fetchHistories } from "./prices.js";
 // view — we don't store minute-by-minute account history.)
 const LABEL = { "1D": "Last 24h", "1W": "Last week", "1M": "Last month", "1Y": "Last year", "MAX": "All time" };
 
-// Chart-resolution policy. No Edge redeploy — reuses existing feeds and trims/downsamples
-// client-side. `range` = an existing feed label to fetch; `windowDays` = keep only the
-// last N days; `down10` = keep every-other 5-min bar → 10-min spacing; `res` = the time
-// format BigChart shows in its tooltip ("15m"/"1h" → time, "1d" → date).
-//   Own portfolio (fixed per timeframe): 1D = every 10 min, 1W = hourly, 1M/1Y/MAX = daily.
-//   Leaderboard (adaptive to account age): 30 min < 7d, hourly < month, daily < year, else weekly.
-function resolve(tf, ageDays, mode) {
-  if (mode === "leaderboard") {
-    if (ageDays <= 7) return { range: "1W", windowDays: 7, down10: false, res: "15m" };   // 30-min bars
-    if (ageDays <= 31) return { range: "1M", windowDays: 31, down10: false, res: "1h" };   // 60-min bars
-    if (ageDays <= 366) return { range: "1Y", windowDays: 366, down10: false, res: "1d" }; // daily
-    return { range: "MAX", windowDays: 36500, down10: false, res: "1d" };                   // weekly
-  }
-  switch (tf) {
-    case "1D": return { range: "1D", windowDays: 1, down10: true, res: "15m" };  // 5-min feed → 10-min
-    case "1W": return { range: "1M", windowDays: 7, down10: false, res: "1h" };   // 60-min feed, trimmed to a week
-    case "1M": return { range: "3M", windowDays: 31, down10: false, res: "1d" };  // daily feed, trimmed to a month
-    case "1Y": return { range: "1Y", windowDays: 366, down10: false, res: "1d" }; // daily
-    default: return { range: ageDays <= 360 ? "1Y" : "MAX", windowDays: 36500, down10: false, res: "1d" }; // all-time: daily <~1y, else weekly
-  }
+// Chart-resolution policy. The visible WINDOW is per-timeframe, but the price FEED that
+// drives the estimate is chosen by ACCOUNT AGE (not the timeframe) so every timeframe
+// reconstructs the SAME underlying curve and just shows a different window of it — i.e.
+// 1W / 1M / All agree where they overlap. (The recorded recent points are identical
+// across timeframes already.) `down10` halves the 5-min 1D feed → 10-min spacing.
+//   By account age: 30-min < 7d, hourly < month, daily < year, then weekly.
+const WINDOW_DAYS = { "1D": 1, "1W": 7, "1M": 31, "1Y": 366, "MAX": 36500 };
+function resolve(tf, ageDays) {
+  const windowDays = WINDOW_DAYS[tf] ?? 36500;
+  let range = "MAX", res = "1d";              // > 1 year → weekly
+  if (ageDays <= 7) { range = "1W"; res = "15m"; }       // 30-min feed
+  else if (ageDays <= 31) { range = "1M"; res = "1h"; }  // hourly
+  else if (ageDays <= 366) { range = "1Y"; res = "1d"; } // daily
+  if (tf === "1D") { range = "1D"; res = "15m"; }        // intraday always fine on the day view
+  return { range, windowDays, down10: tf === "1D", res };
 }
 
 // cadence → days between recurring deposits (for the estimated pre-recording schedule)
@@ -41,7 +36,7 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const accountStartT = startAt ? Math.floor(Date.parse(startAt) / 1000)
     : (history && history.length ? Math.floor(Date.parse(history[0].day) / 1000) : 0);
   const ageDays = accountStartT ? (Math.floor(Date.now() / 1000) - accountStartT) / 86400 : 9999;
-  const { range, windowDays, down10, res } = resolve(tf, ageDays, mode);
+  const { range, windowDays, down10, res } = resolve(tf, ageDays);
   // Earliest timestamp to keep: the window start, but never before the account existed.
   // If the account start is unknown (e.g. a rival with no readable snapshots), floor at
   // ~1 year ago so an unbounded "all-time" window doesn't reach back to epoch 1970.

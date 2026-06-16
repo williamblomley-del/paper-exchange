@@ -104,14 +104,14 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   // time (they're part of your balance growth — the "simple" model).
   const includesOpen = !!accountStartT && cutoff <= accountStartT + 300;
 
-  // Splice: ESTIMATE (with deposit steps) for the past, REAL recorded points for the
-  // recent period (everything from the first recorded point onward), ending on live value.
+  // Prefer the REAL recorded timeline when we have it — it already contains the true
+  // deposit steps (written at the exact moment money landed), is consistent across
+  // timeframes (every window draws the same points), and needs no guessing. The
+  // cost-basis ESTIMATE is only a fallback until ≥2 recorded points exist (brand-new
+  // accounts). We do NOT splice the two — that double-counted deposits (the "300 jumps").
   const vhPts = vhWin.map((p) => ({ t: p.t, c: p.value }));
   let core = null;
-  if (hist && hist.length && vhPts.length) {
-    const firstVhT = vhPts[0].t;
-    core = [...hist.filter((p) => p.t < firstVhT), ...vhPts];
-  } else if (vhPts.length >= 2) {
+  if (vhPts.length >= 2) {
     core = vhPts;
   } else if (hist && hist.length) {
     core = hist;

@@ -57,13 +57,14 @@ export async function loadMemberships(userId) {
 
 // Create a game (with config) + the creator's membership in ONE server-side call
 // (a SECURITY DEFINER function) so both inserts share the same auth context.
-export async function createGame({ name, startCash, depositAmount, depositCadence, username }) {
+export async function createGame({ name, startCash, depositAmount, depositCadence, depositTime, username }) {
   const { data, error } = await supabase.rpc("create_game", {
     p_name: name || null,
     p_username: (username || "").trim(),
     p_start_cash: Number(startCash) > 0 ? Number(startCash) : 10000,
     p_deposit_amount: Number(depositAmount) > 0 ? Number(depositAmount) : 0,
     p_deposit_cadence: Number(depositAmount) > 0 ? depositCadence : null,
+    p_deposit_time: Number(depositAmount) > 0 && depositTime ? depositTime : null,
   });
   if (error) return { error };
   return { membership: data };

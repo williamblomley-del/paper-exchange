@@ -22,6 +22,7 @@ export default function GamePicker({ userId, defaultName, memberships, onEnter, 
   const [hasDeposit, setHasDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState("150");
   const [depositCadence, setDepositCadence] = useState("daily");
+  const [depositTime, setDepositTime] = useState("09:00"); // time of day (UK) deposits land
 
   // join form
   const [code, setCode] = useState("");
@@ -39,6 +40,7 @@ export default function GamePicker({ userId, defaultName, memberships, onEnter, 
       name, startCash, username,
       depositAmount: hasDeposit ? depositAmount : 0,
       depositCadence: hasDeposit ? depositCadence : null,
+      depositTime: hasDeposit ? depositTime : null,
     }, userId);
     setBusy(false);
     if (error) return setMsg({ kind: "err", text: error.message || "Couldn't create the game." });
@@ -117,8 +119,10 @@ export default function GamePicker({ userId, defaultName, memberships, onEnter, 
                       <button key={k} type="button" onClick={() => setDepositCadence(k)} style={{ padding: "8px 12px", fontSize: 12.5, fontWeight: 600, border: `1px solid ${depositCadence === k ? C.blue : C.line}`, borderRadius: 999, background: depositCadence === k ? "rgba(70,160,255,0.10)" : C.card, color: depositCadence === k ? C.blue : C.dim }}>{l}</button>
                     ))}
                   </div>
+                  <label style={{ ...label, marginTop: 12 }}>Time of day (UK)</label>
+                  <input type="time" value={depositTime} onChange={(e) => setDepositTime(e.target.value)} className="pi" style={input} />
                   {Number(depositAmount) > 0 && (
-                    <div style={{ fontSize: 12, color: C.dim, marginTop: 10 }}>Each player gets <b style={{ color: C.ink }}>{P(Number(depositAmount))}</b> {(CADENCES.find((c) => c[0] === depositCadence) || [])[1]?.toLowerCase()}.</div>
+                    <div style={{ fontSize: 12, color: C.dim, marginTop: 4 }}>Each player gets <b style={{ color: C.ink }}>{P(Number(depositAmount))}</b> {(CADENCES.find((c) => c[0] === depositCadence) || [])[1]?.toLowerCase()} at <b style={{ color: C.ink }}>{depositTime}</b>.</div>
                   )}
                 </div>
               )}

@@ -42,7 +42,7 @@ export default function StockDetail({
   const cur = currencyOf(active, stock.currency); // native currency (suffix-aware)
 
   // Real history (from Yahoo via the Edge Function) for the current timeframe.
-  const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "3M": "1d", "6M": "1d", "1Y": "1d", "MAX": "1mo" };
+  const RES = { "1D": "15m", "1W": "15m", "1M": "1h", "3M": "1h", "6M": "1h", "1Y": "1d", "MAX": "1mo" };
   const hist = Array.isArray(stock.history) ? stock.history : [];
   const hasReal = hist.length > 1;
   // Extend the line to the LIVE price so the chart's right edge tracks the current

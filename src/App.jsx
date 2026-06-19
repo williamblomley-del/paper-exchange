@@ -345,11 +345,6 @@ export default function App() {
   const startCash = Number(game?.start_cash) || 10000;
   const deposited = Number(mem?.deposited) || startCash;
   const totalPL = totalValue - deposited;
-  // Real money-in events (deposits + grants) from your notifications → exact step times
-  // on the performance graph.
-  const depEvents = notifs
-    .filter((n) => (n.kind === "deposit" || n.kind === "grant") && Number(n.amount) > 0)
-    .map((n) => ({ t: Math.floor(Date.parse(n.created_at) / 1000), amount: Number(n.amount) }));
   totalValueRef.current = totalValue;
 
   // Record a real value point for the accurate timeline. Throttled to ~15 min unless
@@ -665,7 +660,7 @@ export default function App() {
             active={active} setActive={setActive} tf={tf} setTf={setTf} stock={stock}
             positions={positions} tradeMode={tradeMode} setTradeMode={setTradeMode}
             tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} cash={cash}
-            totalValue={totalValue} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={game?.deposit_cadence} depEvents={depEvents} depAmount={game?.deposit_amount} lists={lists} gameStart={mem?.created_at}
+            totalValue={totalValue} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={game?.deposit_cadence} depTime={game?.deposit_time} depAmount={game?.deposit_amount} lists={lists} gameStart={mem?.created_at}
           />
         )}
 
@@ -674,7 +669,7 @@ export default function App() {
             totalValue={totalValue} totalPL={totalPL} cash={cash} positions={positions}
             allocation={allocation} setActive={setActive} active={active}
             tf={tf} setTf={setTf} tradeMode={tradeMode} setTradeMode={setTradeMode}
-            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={game?.deposit_cadence} depEvents={depEvents} depAmount={game?.deposit_amount} gameStart={mem?.created_at}
+            tradeAmt={tradeAmt} setTradeAmt={setTradeAmt} trade={trade} history={history} startCash={startCash} deposited={deposited} vhistory={vhistory} depCadence={game?.deposit_cadence} depTime={game?.deposit_time} depAmount={game?.deposit_amount} gameStart={mem?.created_at}
             onRequestMoney={handleRequest}
           />
         )}

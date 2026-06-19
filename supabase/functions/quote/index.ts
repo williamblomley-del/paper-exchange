@@ -38,14 +38,18 @@ function normExchange(s: string | null | undefined): string | null {
   return s.length <= 6 ? s : s.split(/[ ,]/)[0];
 }
 
-const YF: Record<string, [string, string]> = {
-  "1D": ["2d", "5m"], "1W": ["5d", "30m"], "1M": ["1mo", "60m"],
-  "3M": ["3mo", "1d"], "6M": ["6mo", "1d"], "1Y": ["1y", "1d"], "MAX": ["max", "1wk"],
+// [yahooRange, yahooInterval, downsampleFactor]. Yahoo has no native 20m / 6h / 12h
+// intervals, so we fetch the nearest finer native interval and keep every Nth bar:
+//   1W → 5m fetched, every 4th = 20-min.  3M → 60m, every 6th = 6-hour (quarter day).
+//   6M → 60m, every 12th = 12-hour (half day).
+const YF: Record<string, [string, string, number]> = {
+  "1D": ["2d", "5m", 1], "1W": ["5d", "5m", 4], "1M": ["1mo", "60m", 1],
+  "3M": ["3mo", "60m", 6], "6M": ["6mo", "60m", 12], "1Y": ["1y", "1d", 1], "MAX": ["max", "1wk", 1],
 };
 
 // One Yahoo chart call → meta (snapshot) + history. Converts GBp (pence) → GBP.
 async function yahoo(sym: string, range: string | null) {
-  const [r, intv] = range ? (YF[range] || ["1mo", "1d"]) : ["1d", "1d"];
+  const [r, intv, factor] = range ? (YF[range] || ["1mo", "1d", 1]) : ["1d", "1d", 1];
   const res = await yf(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${r}&interval=${intv}&includePrePost=true`);
   const result = res?.chart?.result?.[0];
   if (!result?.meta) return null;
@@ -55,9 +59,11 @@ async function yahoo(sym: string, range: string | null) {
   if (div !== 1) cur = "GBP";
   const closes = result.indicators?.quote?.[0]?.close || [];
   const ts = result.timestamp || [];
-  const history = range
+  let history = range
     ? ts.map((t: number, i: number) => ({ t, c: closes[i] != null ? closes[i] / div : null })).filter((p: { c: number | null }) => p.c != null)
     : [];
+  // downsample to the requested spacing, always keeping the most recent bar
+  if (factor > 1) history = history.filter((_: unknown, i: number, a: unknown[]) => i % factor === 0 || i === a.length - 1);
   const d = (v: number | null | undefined) => (v == null ? null : v / div);
   return {
     price: d(meta.regularMarketPrice), prevClose: d(meta.chartPreviousClose ?? meta.previousClose),

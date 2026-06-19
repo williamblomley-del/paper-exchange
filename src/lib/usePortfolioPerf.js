@@ -27,7 +27,7 @@ function resolve(tf, ageDays) {
 // cadence → days between recurring deposits (for the estimated pre-recording schedule)
 const CAD_DAYS = { daily: 1, "2d": 2, "2pw": 3.5, weekly: 7, monthly: 30 };
 
-export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null, depCadence = null, depEvents = null, depAmount = null) {
+export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, history, startAt, mode = "own", deposited = null, vh = null, depCadence = null, depTime = null, depAmount = null) {
   const [hist, setHist] = useState(null); // [{t,c}] reconstructed history (no live tail)
   const tickers = Object.keys(positions);
   // Don't reconstruct before the account existed — valuing today's shares at prices
@@ -44,21 +44,22 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
-  // Deposit STEPS on the estimate. Prefer the REAL events (exact time + amount) — e.g. from
-  // your own notifications — so each deposit lands at the moment it actually happened. If
-  // we don't have events (a rival, whose notifications we can't read), fall back to N
-  // evenly-spaced steps of the deposit amount, N = totalDep / depositAmount, so the COUNT
-  // matches reality (e.g. two 150s) even when the account is younger than the deposit count.
+  // Deposit STEPS from the game's SHARED schedule (deposit time + cadence), so every
+  // player's deposits land at the SAME wall-clock time — derivable from the game config
+  // (readable for everyone), no need for private notifications. We place exactly
+  // N = round(totalDep / depositAmount) steps (= the deposits actually received) at the
+  // first N scheduled times after the account opened.
   const totalDep = Math.max(0, (deposited != null ? deposited : (startCash || 0)) - (startCash || 0));
-  let depList = (depEvents || [])
-    .filter((e) => e && e.t && e.amount > 0)
-    .map((e) => ({ t: e.t, amount: e.amount }))
-    .sort((a, b) => a.t - b.t);
-  if (depList.length === 0 && totalDep > 0 && accountStartT) {
-    const N = depAmount > 0 ? Math.max(1, Math.round(totalDep / depAmount))
-      : Math.max(1, Math.round(ageDays / (CAD_DAYS[depCadence] || 1)));
-    const span = Math.max(1, nowS - accountStartT);
-    for (let k = 0; k < N && k < 4000; k++) depList.push({ t: accountStartT + Math.round(((k + 1) / (N + 1)) * span), amount: totalDep / N });
+  const depList = [];
+  if (totalDep > 0 && depAmount > 0 && accountStartT) {
+    const N = Math.max(1, Math.round(totalDep / depAmount));
+    const ivS = (CAD_DAYS[depCadence] || 1) * 86400;
+    const [hh, mm] = String(depTime || "09:00").split(":").map(Number);
+    const d = new Date(accountStartT * 1000);
+    d.setUTCHours(Number.isFinite(hh) ? hh : 9, Number.isFinite(mm) ? mm : 0, 0, 0); // ~deposit time (UTC≈London)
+    let te = Math.floor(d.getTime() / 1000);
+    if (te < accountStartT) te += ivS; // first scheduled time after the account opened
+    for (let k = 0; k < N && k < 4000 && te <= nowS; k++, te += ivS) depList.push({ t: te, amount: depAmount });
   }
   const depositsAfter = (t) => depList.filter((e) => e.t > t).reduce((s, e) => s + e.amount, 0);
   const ekey = key + "|" + depList.map((e) => e.t + ":" + Math.round(e.amount)).join(",");

@@ -351,8 +351,8 @@ Goal: real login, data persists in Postgres.
 2. Run the schema SQL above in SQL Editor.
 3. Create `.env.local` in the project root:
    ```
-   VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJ...
+   VITE_SUPABASE_URL=https://pyewyjetwcnqruunvzpz.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZXd5amV0d2NucXJ1dW52enB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTcxMjksImV4cCI6MjA5NjkzMzEyOX0.0D93or4PsTkAXY4-VPm6ZY6aouFKmlPQbFdgeeTnl1E
    ```
 4. Wire `src/lib/supabase.js`.
 5. Replace the name-only onboard flow with a proper auth screen:
@@ -519,6 +519,6 @@ node_modules/
 dist/
 .env.local
 .env
-```
+```.en
 
 Never commit `.env.local`. The `VITE_SUPABASE_ANON_KEY` is designed to be public (it's protected by RLS policies), but keep the habit.

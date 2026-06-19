@@ -112,10 +112,14 @@ export async function loadSnapshots(membershipId) {
 // + a step written server-side on deposits/grants). t is returned as epoch seconds.
 export async function loadValueHistory(membershipId) {
   if (!membershipId) return [];
-  const { data } = await supabase
-    .from("value_history").select("t, value")
+  // tolerate the kind/amount columns not existing yet (value_history_tags.sql not run)
+  let { data, error } = await supabase
+    .from("value_history").select("t, value, kind, amount")
     .eq("membership_id", membershipId).order("t", { ascending: true }).limit(3000);
-  return (data || []).map((r) => ({ t: Math.floor(Date.parse(r.t) / 1000), value: Number(r.value) }));
+  if (error) ({ data } = await supabase
+    .from("value_history").select("t, value")
+    .eq("membership_id", membershipId).order("t", { ascending: true }).limit(3000));
+  return (data || []).map((r) => ({ t: Math.floor(Date.parse(r.t) / 1000), value: Number(r.value), kind: r.kind || "point", amount: r.amount != null ? Number(r.amount) : null }));
 }
 
 export async function recordValuePoint(membershipId, value) {

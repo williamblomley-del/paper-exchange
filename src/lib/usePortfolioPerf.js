@@ -44,14 +44,17 @@ export function usePortfolioPerf(positions, cash, startCash, totalValue, tf, his
   const cutoff = Math.max(nowS - windowDays * 86400, accountStartT || (nowS - 366 * 86400));
   const key = tickers.slice().sort().join(",") + "|" + range + "|" + cutoff + "|" + cash + "|" + down10;
 
-  // Deposit STEPS from the game's SHARED schedule (deposit time + cadence), so every
-  // player's deposits land at the SAME wall-clock time — derivable from the game config
-  // (readable for everyone), no need for private notifications. We place exactly
-  // N = round(totalDep / depositAmount) steps (= the deposits actually received) at the
-  // first N scheduled times after the account opened.
+  // Deposit STEPS. PREFER the REAL recorded times — value_history rows tagged 'deposit'/
+  // 'grant' are written the moment money lands and are game-readable, so each step sits
+  // exactly when the money actually arrived (for you AND rivals). Only if there are no
+  // tagged rows yet do we fall back to GUESSING from the game's schedule (deposit time +
+  // cadence): N = round(totalDep / depositAmount) steps at the scheduled times.
   const totalDep = Math.max(0, (deposited != null ? deposited : (startCash || 0)) - (startCash || 0));
-  const depList = [];
-  if (totalDep > 0 && depAmount > 0 && accountStartT) {
+  let depList = (vh || [])
+    .filter((p) => (p.kind === "deposit" || p.kind === "grant") && Number(p.amount) > 0)
+    .map((p) => ({ t: p.t, amount: Number(p.amount) }))
+    .sort((a, b) => a.t - b.t);
+  if (depList.length === 0 && totalDep > 0 && depAmount > 0 && accountStartT) {
     const N = Math.max(1, Math.round(totalDep / depAmount));
     const ivS = (CAD_DAYS[depCadence] || 1) * 86400;
     const [hh, mm] = String(depTime || "09:00").split(":").map(Number);

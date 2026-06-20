@@ -34,7 +34,8 @@ function spread(ys, gap, min, max) {
 
 export default function AllocationDonut({ items, centerLabel, onSelect }) {
   const click = (s) => { if (s.ticker && onSelect) onSelect(s.ticker); };
-  const W = 520, H = 300, cx = 260, cy = 150, R = 102, r = 62;
+  const W = 520, cx = 260, R = 102, r = 62;
+  const GAP = 32; // vertical space per label (2 lines + breathing room)
   const [hover, setHover] = useState(null); // index of the hovered slice (pops out)
   const svgRef = useRef(null);
 
@@ -54,20 +55,27 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   data = data.sort((a, b) => b.value - a.value);
   if (data.length === 0) data = sorted; // everything was tiny — show as-is
 
-  // build slices with geometry
+  // First pass: slice angles + which SIDE each label sits on, so we can size the chart
+  // tall enough for the busier side's labels (otherwise they clamp/clip at the top).
   let a = -Math.PI / 2;
-  const slices = data.map((it, i) => {
+  const ang = data.map((it) => {
     const frac = it.value / total;
     const a0 = a, a1 = a + frac * 2 * Math.PI; a = a1;
     const mid = (a0 + a1) / 2;
-    const right = Math.cos(mid) >= 0;
-    return {
-      ...it, frac, color: SHADES[i % SHADES.length], right, a0, a1,
-      d: seg(cx, cy, R, r, a0, a1),
-      ax: cx + R * Math.cos(mid), ay: cy + R * Math.sin(mid),
-      mx: Math.cos(mid), my: Math.sin(mid), // radial direction (for hover pop-out)
-    };
+    return { it, frac, a0, a1, mid, right: Math.cos(mid) >= 0 };
   });
+  const leftN = ang.filter((m) => !m.right).length;
+  const rightN = ang.length - leftN;
+  // height grows with the busier side so EVERY label fits (donut stays centred in it)
+  const H = Math.max(300, Math.max(leftN, rightN) * GAP + 44);
+  const cy = H / 2;
+
+  const slices = ang.map((m, i) => ({
+    ...m.it, frac: m.frac, color: SHADES[i % SHADES.length], right: m.right, a0: m.a0, a1: m.a1,
+    d: seg(cx, cy, R, r, m.a0, m.a1),
+    ax: cx + R * Math.cos(m.mid), ay: cy + R * Math.sin(m.mid),
+    mx: Math.cos(m.mid), my: Math.sin(m.mid), // radial direction (for hover pop-out)
+  }));
 
   // Which slice is under the cursor — computed from the cursor's ANGLE/position on
   // the whole chart (not per-slice mouse-enter/leave). This avoids the flicker where
@@ -86,10 +94,10 @@ export default function AllocationDonut({ items, centerLabel, onSelect }) {
   const onClickSvg = (e) => { const i = sliceAt(e); if (i >= 0) click(slices[i]); };
   const hoverClickable = hover != null && slices[hover]?.ticker && onSelect;
 
-  // de-overlap labels per side
+  // de-overlap labels per side (the chart height above guarantees they all fit)
   ["R", "L"].forEach((side) => {
     const grp = slices.filter((s) => (s.right ? "R" : "L") === side).sort((p, q) => p.ay - q.ay);
-    const ys = spread(grp.map((s) => s.ay), 38, 14, H - 14); // gap fits 2-line labels + hover pop-out
+    const ys = spread(grp.map((s) => s.ay), GAP, 18, H - 18);
     grp.forEach((s, i) => { s.ly = ys[i]; });
   });
 

@@ -1,4 +1,4 @@
-// Supabase Edge Function: quote
+cd ~/Desktop/paper-exchange// Supabase Edge Function: quote
 // Browser → THIS function → Finnhub (+ Yahoo). FINNHUB_KEY lives only here.
 //
 // Finnhub (US-focused) is the primary snapshot; for non-US listings (e.g. AZN.L,

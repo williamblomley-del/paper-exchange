@@ -21,7 +21,12 @@
       "Bash(python3 -c ' *)",
       "Bash(git commit -q -m 'Edge Function: extended-hours \\(pre/post-market\\) prices for holdings + detail via yahooLive *)",
       "Bash(git commit -q -m 'Edge Function: fetch profile/metric/quote/history/live in parallel \\(faster stock open\\) *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Read(//Users/piccirillu/Desktop/chess-analyzer/**)",
+      "Bash(sed -n '1,120p' node_modules/react-chessboard/dist/types.d.ts)",
+      "Bash(npm view *)",
+      "Bash(node -e \"const p=require\\('./node_modules/stockfish/package.json'\\); console.log\\('main:',p.main\\); console.log\\('exports:',JSON.stringify\\(p.exports,null,2\\)\\); console.log\\('files:',p.files\\)\")",
+      "Bash(head -3 /tmp/openings_c.tsv)"
     ]
   }
 }
